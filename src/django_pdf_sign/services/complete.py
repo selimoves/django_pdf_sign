@@ -15,6 +15,9 @@ from django_pdf_sign.crypto.cms import ParsedCms, parse_cms
 from django_pdf_sign.crypto.digest import digest_for
 from django_pdf_sign.crypto.gost import verify_gost
 from django_pdf_sign.crypto.pades import verify_pades
+from django_pdf_sign.crypto.policy import VerificationPolicy
+from django_pdf_sign.crypto.timestamp import verify_timestamp_token
+from django_pdf_sign.crypto.validation import validate_chain
 from django_pdf_sign.exceptions import SessionError, VerificationError
 from django_pdf_sign.models import SignatureRecord, SigningSession
 from django_pdf_sign.pdf.embedder import embed_cms
@@ -60,15 +63,15 @@ def _prepared_bytes(session: SigningSession) -> bytes:
         session.prepared_pdf.close()
 
 
-def _verify(parsed: ParsedCms, session: SigningSession) -> None:
+def _verify(
+    parsed: ParsedCms,
+    session: SigningSession,
+    policy: VerificationPolicy,
+) -> dict[str, object]:
     if parsed.certificate.thumbprint_sha256 != session.certificate_thumbprint:
-        raise VerificationError("CMS certificate does not match the session")
+        raise VerificationError("Сертификат CMS не совпадает с сессией")
     if parsed.digest_algorithm != session.digest_algorithm:
-        raise VerificationError("CMS digest algorithm does not match the session")
-
-    now = timezone.now()
-    if not parsed.certificate.not_before <= now <= parsed.certificate.not_after:
-        raise VerificationError("Signer certificate is not valid at signing time")
+        raise VerificationError("Алгоритм дайджеста CMS не совпадает с сессией")
 
     prepared_pdf = _prepared_bytes(session)
     start = session.reserved_region_start
@@ -76,11 +79,11 @@ def _verify(parsed: ParsedCms, session: SigningSession) -> None:
     signed_bytes = prepared_pdf[:start] + prepared_pdf[end:]
 
     if parsed.message_digest != digest_for(session.digest_algorithm, signed_bytes):
-        raise VerificationError("CMS messageDigest does not match the document")
+        raise VerificationError("messageDigest CMS не совпадает с документом")
 
     if parsed.certificate.is_gost:
         if parsed.certificate.curve_oid is None:
-            raise VerificationError("GOST certificate has no curve parameters")
+            raise VerificationError("В сертификате ГОСТ нет параметров кривой")
         attributes_digest = digest_for(parsed.digest_algorithm, parsed.signed_attrs_der)
         signature_valid = verify_gost(
             public_key=parsed.certificate.public_key,
@@ -98,19 +101,85 @@ def _verify(parsed: ParsedCms, session: SigningSession) -> None:
         )
 
     if not signature_valid:
-        raise VerificationError("CMS signature is invalid")
+        raise VerificationError("Подпись CMS неверна")
+
+    details: dict[str, object] = {
+        "message_digest_ok": True,
+        "signature_ok": True,
+        "certificate_matches": True,
+        "chain_ok": None,
+        "trusted": None,
+        "revoked": False,
+        "validation_path": [],
+        "timestamp_ok": None,
+        "signing_time": None,
+    }
+
+    validation_moment = timezone.now()
+    if parsed.timestamp_token is not None:
+        timestamp = verify_timestamp_token(
+            parsed.timestamp_token, signature_value=parsed.signature
+        )
+        details["timestamp_ok"] = timestamp.valid
+        details["signing_time"] = (
+            timestamp.gen_time.isoformat() if timestamp.gen_time else None
+        )
+        if timestamp.gen_time is not None and timestamp.valid:
+            validation_moment = timestamp.gen_time
+        if policy.check_timestamps and not timestamp.valid:
+            reason = "; ".join(timestamp.errors) or "метка времени неверна"
+            raise VerificationError(f"Проверка метки времени не пройдена: {reason}")
+    elif policy.require_timestamp:
+        details["timestamp_ok"] = False
+        raise VerificationError("Требуется метка времени, но она отсутствует")
+
+    if not (
+        parsed.certificate.not_before
+        <= validation_moment
+        <= parsed.certificate.not_after
+    ):
+        raise VerificationError(
+            "Сертификат подписанта недействителен на момент подписи"
+        )
+
+    if policy.check_chain:
+        chain_policy = policy
+        if validation_moment != policy.moment and parsed.timestamp_token is not None:
+            from dataclasses import replace
+
+            chain_policy = replace(policy, moment=validation_moment)
+        chain = validate_chain(parsed.certificate.der, chain_policy)
+        details.update(
+            {
+                "chain_ok": chain.valid,
+                "trusted": chain.trusted,
+                "revoked": chain.revoked,
+                "validation_path": list(chain.validation_path),
+                "chain_errors": list(chain.errors),
+            }
+        )
+        if not chain.valid:
+            reason = "; ".join(chain.errors) or "цепочка недействительна"
+            raise VerificationError(f"Проверка цепочки не пройдена: {reason}")
+
+    return details
 
 
 def complete_signing(
-    *, session_id: Any, cms: bytes, user: Any = None
+    *,
+    session_id: Any,
+    cms: bytes,
+    user: Any = None,
+    policy: VerificationPolicy | None = None,
 ) -> CompletionResult:
-    """Verify a client CMS, embed it into the prepared PDF and record the result."""
+    """Проверить CMS клиента, встроить её в подготовленный PDF и записать результат."""
+    effective_policy = policy or VerificationPolicy()
     try:
         with transaction.atomic():
             session = _load_session(session_id)
             _check_session(session, user)
             parsed = parse_cms(cms)
-            _verify(parsed, session)
+            details = _verify(parsed, session, effective_policy)
 
             prepared_pdf = _prepared_bytes(session)
             signed_pdf = embed_cms(
@@ -135,11 +204,7 @@ def complete_signing(
                 subfilter=session.subfilter,
                 cms_size=len(cms),
                 verification_status=VerificationStatus.VALID,
-                verification_details={
-                    "message_digest_ok": True,
-                    "signature_ok": True,
-                    "certificate_matches": True,
-                },
+                verification_details=details,
             )
             record.signed_pdf.save(
                 f"{session.pk}.pdf", ContentFile(signed_pdf), save=False

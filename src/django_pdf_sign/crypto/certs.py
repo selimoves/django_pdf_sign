@@ -56,7 +56,7 @@ def _hex_serial(value: int) -> str:
     return hexed if len(hexed) % 2 == 0 else "0" + hexed
 
 
-def _gost_public_key(spki: keys.PublicKeyInfo, key_size: int) -> bytes:
+def gost_public_key_from_spki(spki: keys.PublicKeyInfo, key_size: int) -> bytes:
     raw = bytes(GostPublicKeyInfo.load(spki.dump())["public_key"].native)
     point_size = key_size // 4
     if len(raw) == point_size + 2 and raw[0] == 0x04 and raw[1] == point_size:
@@ -68,7 +68,12 @@ def _gost_public_key(spki: keys.PublicKeyInfo, key_size: int) -> bytes:
     return raw
 
 
-def _curve_oid(parameters: Any) -> str | None:
+def curve_oid_from_parameters(parameters: Any) -> str | None:
+    """Извлечь OID кривой из параметров алгоритма ключа.
+
+    КриптоПро кодирует параметры как SEQUENCE из двух OID (набор кривой и
+    набор дайджеста), стандарт X.509 — как один OID.
+    """
     if parameters is None:
         return None
     native = parameters.native
@@ -111,7 +116,9 @@ def parse_certificate(der: bytes) -> CertificateInfo:
 
     is_gost = key_oid in GOST_KEY_OIDS
     key_size = _key_size(der, key_oid)
-    curve_oid = _curve_oid(spki["algorithm"]["parameters"]) if is_gost else None
+    curve_oid = (
+        curve_oid_from_parameters(spki["algorithm"]["parameters"]) if is_gost else None
+    )
 
     native_subject = cert.subject.native
     validity = tbs["validity"]
@@ -128,7 +135,9 @@ def parse_certificate(der: bytes) -> CertificateInfo:
         key_oid=key_oid,
         signature_oid=signature_oid,
         curve_oid=curve_oid,
-        public_key=_gost_public_key(spki, key_size) if is_gost else spki.dump(),
+        public_key=gost_public_key_from_spki(spki, key_size)
+        if is_gost
+        else spki.dump(),
         key_size=key_size,
         is_gost=is_gost,
     )

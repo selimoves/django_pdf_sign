@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from django_pdf_sign.crypto.policy import VerificationPolicy
+from django_pdf_sign.crypto.validation import ChainResult
 from django_pdf_sign.services.complete import CompletionResult, complete_signing
 from django_pdf_sign.services.prepare import PreparedSigning, prepare_signing
 from django_pdf_sign.services.verify import (
@@ -11,8 +13,10 @@ from django_pdf_sign.services.verify import (
 )
 
 __all__ = [
+    "ChainResult",
     "CompletionResult",
     "PreparedSigning",
+    "VerificationPolicy",
     "VerificationResult",
     "complete_signing",
     "prepare_signing",

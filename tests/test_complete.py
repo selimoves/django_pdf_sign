@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import io
 from datetime import timedelta
 
@@ -17,7 +18,11 @@ from pyhanko_certvalidator import ValidationContext
 from django_pdf_sign.constants import SigningStatus, VerificationStatus
 from django_pdf_sign.exceptions import SessionError, VerificationError
 from django_pdf_sign.models import SignatureRecord
-from django_pdf_sign.services import complete_signing, prepare_signing
+from django_pdf_sign.services import (
+    VerificationPolicy,
+    complete_signing,
+    prepare_signing,
+)
 from tests.helpers import (
     make_gost_certificate,
     make_gost_cms,
@@ -26,6 +31,8 @@ from tests.helpers import (
     minimal_pdf,
 )
 from tests.models import Document
+
+NOW = datetime.datetime(2026, 6, 1, tzinfo=datetime.UTC)
 
 
 def _document() -> Document:
@@ -185,3 +192,46 @@ def test_complete_accepts_matching_user() -> None:
     cms_bytes, _, _ = make_rsa_cms(data=prepared.bytes_to_sign, signer=(info, key))
     result = complete_signing(session_id=prepared.session.pk, cms=cms_bytes, user=owner)
     assert result.session.status == SigningStatus.COMPLETED
+
+
+@pytest.mark.django_db
+def test_complete_with_trusted_chain() -> None:
+    ca_info, ca_key = make_gost_certificate(common_name="Test CA", is_ca=True)
+    leaf_info, leaf_key = make_gost_certificate(
+        common_name="Test Leaf",
+        issuer_cert_der=ca_info.der,
+        issuer_private_key=ca_key,
+    )
+    prepared = prepare_signing(document=_document(), certificate_der=leaf_info.der)
+    cms_bytes, _, _ = make_gost_cms(
+        data=prepared.bytes_to_sign, signer=(leaf_info, leaf_key)
+    )
+    policy = VerificationPolicy(
+        check_chain=True, trust_roots=(ca_info.der,), moment=NOW
+    )
+    result = complete_signing(
+        session_id=prepared.session.pk, cms=cms_bytes, policy=policy
+    )
+    assert result.record.verification_status == VerificationStatus.VALID
+    assert result.record.verification_details["chain_ok"] is True
+
+
+@pytest.mark.django_db
+def test_complete_rejects_untrusted_chain() -> None:
+    ca_info, ca_key = make_gost_certificate(common_name="Test CA", is_ca=True)
+    other_info, _ = make_gost_certificate(common_name="Other CA", is_ca=True)
+    leaf_info, leaf_key = make_gost_certificate(
+        common_name="Test Leaf",
+        issuer_cert_der=ca_info.der,
+        issuer_private_key=ca_key,
+    )
+    prepared = prepare_signing(document=_document(), certificate_der=leaf_info.der)
+    cms_bytes, _, _ = make_gost_cms(
+        data=prepared.bytes_to_sign, signer=(leaf_info, leaf_key)
+    )
+    policy = VerificationPolicy(
+        check_chain=True, trust_roots=(other_info.der,), moment=NOW
+    )
+    with pytest.raises(VerificationError):
+        complete_signing(session_id=prepared.session.pk, cms=cms_bytes, policy=policy)
+    assert not SignatureRecord.objects.exists()

@@ -15,7 +15,7 @@ from django_pdf_sign.exceptions import VerificationError
 
 @dataclass(frozen=True)
 class ParsedCms:
-    """Fields of a detached CMS needed to verify a PDF signature."""
+    """Поля отсоединённой CMS, нужные для проверки подписи PDF."""
 
     certificate: CertificateInfo
     message_digest: bytes
@@ -24,6 +24,7 @@ class ParsedCms:
     signed_attrs_der: bytes
     signing_time: datetime | None
     signature_algorithm_oid: str
+    timestamp_token: bytes | None = None
 
 
 def _certificate_set(signed_data: Any) -> Any:
@@ -72,6 +73,22 @@ def _signed_attribute(attributes: Any, name: str) -> Any:
     return None
 
 
+def _timestamp_token(signer_info: Any) -> bytes | None:
+    try:
+        unsigned = signer_info["unsigned_attrs"]
+    except (KeyError, TypeError):
+        return None
+    if unsigned is None:
+        return None
+    try:
+        for attribute in unsigned:
+            if attribute["type"].native == "signature_time_stamp_token":
+                return bytes(attribute["values"][0].dump())
+    except (TypeError, KeyError):
+        return None
+    return None
+
+
 def parse_cms(cms_bytes: bytes) -> ParsedCms:
     """Parse a DER-encoded detached CMS into a :class:`ParsedCms`."""
     try:
@@ -117,4 +134,5 @@ def parse_cms(cms_bytes: bytes) -> ParsedCms:
         signed_attrs_der=b"\x31" + attributes.dump()[1:],
         signing_time=signing_time if isinstance(signing_time, datetime) else None,
         signature_algorithm_oid=signer_info["signature_algorithm"]["algorithm"].dotted,
+        timestamp_token=_timestamp_token(signer_info),
     )

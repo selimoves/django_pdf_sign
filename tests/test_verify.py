@@ -2,22 +2,28 @@
 
 from __future__ import annotations
 
+import datetime
+
 import pytest
 from django.core.files.base import ContentFile
 
 from django_pdf_sign.services import (
+    VerificationPolicy,
     complete_signing,
     prepare_signing,
     verify_cms_over_bytes,
     verify_signed_pdf,
 )
 from tests.helpers import (
+    make_gost_certificate,
     make_gost_cms,
     make_rsa_certificate,
     make_rsa_cms,
     minimal_pdf,
 )
 from tests.models import Document
+
+NOW = datetime.datetime(2026, 6, 1, tzinfo=datetime.UTC)
 
 
 def test_valid_rsa_cms() -> None:
@@ -40,7 +46,7 @@ def test_wrong_certificate_is_flagged() -> None:
     )
     assert not result.valid
     assert not result.certificate_matches
-    assert "Certificate does not match" in result.errors
+    assert "Сертификат не совпадает с ожидаемым" in result.errors
 
 
 def test_wrong_data_is_flagged() -> None:
@@ -60,6 +66,45 @@ def test_gost_cms_verifies() -> None:
 def test_garbage_cms_is_flagged() -> None:
     result = verify_cms_over_bytes(cms=b"garbage", data=b"data")
     assert not result.valid
+    assert result.errors
+
+
+def _gost_chain() -> tuple[bytes, object]:
+    ca_info, ca_key = make_gost_certificate(common_name="Test CA", is_ca=True)
+    leaf_info, leaf_key = make_gost_certificate(
+        common_name="Test Leaf",
+        issuer_cert_der=ca_info.der,
+        issuer_private_key=ca_key,
+    )
+    cms_bytes, _, data = make_gost_cms(signer=(leaf_info, leaf_key))
+    return ca_info.der, (cms_bytes, data)
+
+
+def test_chain_policy_trusted() -> None:
+    ca_der, (cms_bytes, data) = _gost_chain()
+    result = verify_cms_over_bytes(
+        cms=cms_bytes,
+        data=data,
+        policy=VerificationPolicy(check_chain=True, trust_roots=(ca_der,), moment=NOW),
+    )
+    assert result.valid
+    assert result.chain_ok is True
+    assert result.trusted is True
+    assert result.validation_path
+
+
+def test_chain_policy_untrusted_root() -> None:
+    _, (cms_bytes, data) = _gost_chain()
+    other_info, _ = make_gost_certificate(common_name="Other CA", is_ca=True)
+    result = verify_cms_over_bytes(
+        cms=cms_bytes,
+        data=data,
+        policy=VerificationPolicy(
+            check_chain=True, trust_roots=(other_info.der,), moment=NOW
+        ),
+    )
+    assert not result.valid
+    assert result.chain_ok is False
     assert result.errors
 
 
@@ -93,4 +138,4 @@ def test_verify_signed_pdf_rejects_tampered_document() -> None:
 def test_verify_signed_pdf_rejects_unsigned_document() -> None:
     verification = verify_signed_pdf(minimal_pdf())
     assert not verification.valid
-    assert "no signatures" in verification.errors[0]
+    assert "нет подписей" in verification.errors[0]

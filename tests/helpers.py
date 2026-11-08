@@ -7,7 +7,7 @@ import hashlib
 import io
 import os
 
-from asn1crypto import algos, cms, core, keys, x509
+from asn1crypto import algos, cms, core, crl, keys, ocsp, tsp, x509
 from cryptography import x509 as cryptography_x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
@@ -253,6 +253,60 @@ def make_gost_certificate(
     return parse_certificate(certificate.dump()), private_key
 
 
+def make_gost_crl(
+    *,
+    issuer_cert_der: bytes,
+    issuer_private_key: bytes,
+    revoked_serials: tuple[int, ...] = (),
+    this_update: datetime.datetime | None = None,
+    next_update: datetime.datetime | None = None,
+) -> bytes:
+    """Собрать CRL, подписанный ключом издателя (конвенция КриптоПро)."""
+    issuer = x509.Certificate.load(issuer_cert_der)
+    issuer_info = parse_certificate(issuer_cert_der)
+    key_size = issuer_info.key_size
+    curve_oid = issuer_info.curve_oid or DEFAULT_GOST_CURVES[key_size]
+    signature_oid = GOST_SIGNATURE_OIDS[key_size]
+    signature_algorithm = algos.SignedDigestAlgorithm(
+        {"algorithm": signature_oid, "parameters": core.ObjectIdentifier(curve_oid)}
+    )
+    this_update = this_update or datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC)
+    next_update = next_update or datetime.datetime(2030, 1, 1, tzinfo=datetime.UTC)
+    tbs = crl.TbsCertList(
+        {
+            "version": "v2",
+            "signature": signature_algorithm,
+            "issuer": issuer.subject,
+            "this_update": core.UTCTime(this_update),
+            "next_update": core.UTCTime(next_update),
+            "revoked_certificates": [
+                crl.RevokedCertificate(
+                    {
+                        "user_certificate": serial,
+                        "revocation_date": core.UTCTime(
+                            datetime.datetime(2025, 6, 1, tzinfo=datetime.UTC)
+                        ),
+                    }
+                )
+                for serial in revoked_serials
+            ],
+        }
+    )
+    signature = gost_sign(
+        issuer_private_key,
+        tbs.dump(),
+        key_size=key_size,
+        curve_oid=curve_oid,
+    )
+    return crl.CertificateList(
+        {
+            "tbs_cert_list": tbs,
+            "signature_algorithm": signature_algorithm,
+            "signature": core.OctetBitString(signature),
+        }
+    ).dump()
+
+
 SIGNING_TIME = datetime.datetime(2026, 11, 8, 12, 0, tzinfo=datetime.UTC)
 SHA256_OID = "2.16.840.1.101.3.4.2.1"
 STREEBOG256_OID = "1.2.643.7.1.1.2.2"
@@ -386,3 +440,231 @@ def make_gost_cms(
         info,
         data,
     )
+
+
+def _gost_hash(name: str, data: bytes) -> bytes:
+    if name in ("streebog256", "streebog512"):
+        return bytes(gosthash.new(name, data=data).digest())
+    return hashlib.new(name, data).digest()
+
+
+def make_gost_ocsp(
+    *,
+    issuer_cert_der: bytes,
+    issuer_private_key: bytes,
+    target_cert_der: bytes,
+    status: str = "good",
+    hash_name: str = "streebog256",
+    this_update: datetime.datetime | None = None,
+    next_update: datetime.datetime | None = None,
+    produced_at: datetime.datetime | None = None,
+) -> bytes:
+    """Собрать ответ OCSP, подписанный ключом издателя."""
+    issuer = x509.Certificate.load(issuer_cert_der)
+    target = x509.Certificate.load(target_cert_der)
+    issuer_info = parse_certificate(issuer_cert_der)
+    key_size = issuer_info.key_size
+    curve_oid = issuer_info.curve_oid or DEFAULT_GOST_CURVES[key_size]
+    signature_oid = GOST_SIGNATURE_OIDS[key_size]
+
+    hash_oid = {
+        "streebog256": STREEBOG256_OID,
+        "streebog512": STREEBOG512_OID,
+        "sha1": "1.3.14.3.2.26",
+        "sha256": "2.16.840.1.101.3.4.2.1",
+    }[hash_name]
+    spki_der = issuer["tbs_certificate"]["subject_public_key_info"].dump()
+    spki_bits = bytes(GostPublicKeyInfo.load(spki_der)["public_key"].native)
+
+    cert_id = ocsp.CertId(
+        {
+            "hash_algorithm": algos.DigestAlgorithm({"algorithm": hash_oid}),
+            "issuer_name_hash": _gost_hash(hash_name, issuer.subject.dump()),
+            "issuer_key_hash": _gost_hash(hash_name, spki_bits),
+            "serial_number": target.serial_number,
+        }
+    )
+    if status == "revoked":
+        cert_status = ocsp.CertStatus(
+            {
+                "revoked": ocsp.RevokedInfo(
+                    {
+                        "revocation_time": core.GeneralizedTime(
+                            datetime.datetime(2025, 6, 1, tzinfo=datetime.UTC)
+                        )
+                    }
+                )
+            }
+        )
+    elif status == "unknown":
+        cert_status = ocsp.CertStatus({"unknown": None})
+    else:
+        cert_status = ocsp.CertStatus({"good": None})
+
+    this_update = this_update or datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC)
+    next_update = next_update or datetime.datetime(2030, 1, 1, tzinfo=datetime.UTC)
+    produced_at = produced_at or this_update
+
+    tbs = ocsp.ResponseData(
+        {
+            "version": "v1",
+            "responder_id": ocsp.ResponderId({"by_name": issuer.subject}),
+            "produced_at": core.GeneralizedTime(produced_at),
+            "responses": [
+                ocsp.SingleResponse(
+                    {
+                        "cert_id": cert_id,
+                        "cert_status": cert_status,
+                        "this_update": core.GeneralizedTime(this_update),
+                        "next_update": core.GeneralizedTime(next_update),
+                    }
+                )
+            ],
+        }
+    )
+    signature = gost_sign(
+        issuer_private_key,
+        tbs.dump(),
+        key_size=key_size,
+        curve_oid=curve_oid,
+    )
+    basic = ocsp.BasicOCSPResponse(
+        {
+            "tbs_response_data": tbs,
+            "signature_algorithm": algos.SignedDigestAlgorithm(
+                {
+                    "algorithm": signature_oid,
+                    "parameters": core.ObjectIdentifier(curve_oid),
+                }
+            ),
+            "signature": core.OctetBitString(signature),
+        }
+    )
+    response = ocsp.OCSPResponse(
+        {
+            "response_status": "successful",
+            "response_bytes": ocsp.ResponseBytes(
+                {
+                    "response_type": "basic_ocsp_response",
+                    "response": basic,
+                }
+            ),
+        }
+    )
+    return response.dump()
+
+
+TST_INFO_OID = "1.2.840.113549.1.9.16.1.4"
+
+
+def make_gost_timestamp(
+    *,
+    signature_value: bytes,
+    tsa_cert_der: bytes,
+    tsa_private_key: bytes,
+    gen_time: datetime.datetime | None = None,
+    hash_name: str = "streebog256",
+) -> bytes:
+    """??????? ????? ??????? CAdES-T ??? ????????? ???????."""
+    tsa = x509.Certificate.load(tsa_cert_der)
+    info = parse_certificate(tsa_cert_der)
+    key_size = info.key_size
+    curve_oid = info.curve_oid or DEFAULT_GOST_CURVES[key_size]
+    signature_oid = GOST_SIGNATURE_OIDS[key_size]
+    hash_oid = {
+        "streebog256": STREEBOG256_OID,
+        "streebog512": STREEBOG512_OID,
+        "sha256": "2.16.840.1.101.3.4.2.1",
+    }[hash_name]
+    gen_time = gen_time or datetime.datetime(2026, 6, 1, tzinfo=datetime.UTC)
+
+    tst_info = tsp.TSTInfo(
+        {
+            "version": "v1",
+            "policy": "1.2.3.4.1",
+            "message_imprint": tsp.MessageImprint(
+                {
+                    "hash_algorithm": algos.DigestAlgorithm({"algorithm": hash_oid}),
+                    "hashed_message": _gost_hash(hash_name, signature_value),
+                }
+            ),
+            "serial_number": int.from_bytes(os.urandom(4), "big"),
+            "gen_time": core.GeneralizedTime(gen_time),
+        }
+    )
+    attributes = cms.CMSAttributes(
+        [
+            cms.CMSAttribute({"type": "content_type", "values": [TST_INFO_OID]}),
+            cms.CMSAttribute(
+                {
+                    "type": "message_digest",
+                    "values": [_gost_hash(hash_name, tst_info.dump())],
+                }
+            ),
+            cms.CMSAttribute(
+                {
+                    "type": "signing_time",
+                    "values": [cms.Time({"utc_time": core.UTCTime(gen_time)})],
+                }
+            ),
+        ]
+    )
+    signature = gost_sign(
+        tsa_private_key,
+        attributes.dump(),
+        key_size=key_size,
+        curve_oid=curve_oid,
+    )
+    signer_info = cms.SignerInfo(
+        {
+            "version": "v1",
+            "sid": cms.SignerIdentifier(
+                {
+                    "issuer_and_serial_number": cms.IssuerAndSerialNumber(
+                        {
+                            "issuer": tsa.issuer,
+                            "serial_number": tsa.serial_number,
+                        }
+                    )
+                }
+            ),
+            "digest_algorithm": algos.DigestAlgorithm({"algorithm": hash_oid}),
+            "signed_attrs": attributes,
+            "signature_algorithm": algos.SignedDigestAlgorithm(
+                {"algorithm": signature_oid}
+            ),
+            "signature": signature,
+        }
+    )
+    signed_data = cms.SignedData(
+        {
+            "version": "v3",
+            "digest_algorithms": [algos.DigestAlgorithm({"algorithm": hash_oid})],
+            "encap_content_info": cms.EncapsulatedContentInfo(
+                {"content_type": TST_INFO_OID, "content": tst_info}
+            ),
+            "certificates": [tsa],
+            "signer_infos": [signer_info],
+        }
+    )
+    return cms.ContentInfo(
+        {"content_type": "signed_data", "content": signed_data}
+    ).dump()
+
+
+def add_cms_timestamp(cms_der: bytes, token_der: bytes) -> bytes:
+    """???????? ????? ??????? ? unsigned-???????? ?????????? CMS."""
+    content_info = cms.ContentInfo.load(cms_der)
+    signer_info = content_info["content"]["signer_infos"][0]
+    token = cms.ContentInfo.load(token_der)
+    signer_info["unsigned_attrs"] = cms.CMSAttributes(
+        [
+            cms.CMSAttribute(
+                {
+                    "type": "signature_time_stamp_token",
+                    "values": [token],
+                }
+            )
+        ]
+    )
+    return content_info.dump()

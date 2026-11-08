@@ -41,6 +41,7 @@ DEFAULTS: dict[str, Any] = {
     "VERIFY": VERIFY_DEFAULTS,
     "PREPARED_UPLOAD_TO": "django_pdf_sign/prepared/%Y/%m/%d",
     "SIGNED_UPLOAD_TO": "django_pdf_sign/signed/%Y/%m/%d",
+    "ON_EVENT": None,
 }
 
 

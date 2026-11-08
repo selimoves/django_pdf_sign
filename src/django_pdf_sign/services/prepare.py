@@ -15,6 +15,7 @@ from django.utils import timezone
 from django_pdf_sign.conf import get_setting
 from django_pdf_sign.constants import SUBFILTER_ADOBE_PKCS7, SUBFILTER_PADES
 from django_pdf_sign.crypto.certs import parse_certificate
+from django_pdf_sign.events import emit
 from django_pdf_sign.exceptions import SigningError
 from django_pdf_sign.models import SigningSession
 from django_pdf_sign.pdf.embedder import prepare_document
@@ -125,6 +126,7 @@ def prepare_signing(
         save=False,
     )
     session.save()
+    emit("session_prepared", session_id=str(session.pk), status=session.status)
 
     return PreparedSigning(
         session=session,

@@ -25,6 +25,7 @@ from django_pdf_sign.crypto.pades import verify_pades
 from django_pdf_sign.crypto.policy import VerificationPolicy
 from django_pdf_sign.crypto.timestamp import verify_timestamp_token
 from django_pdf_sign.crypto.validation import validate_chain
+from django_pdf_sign.events import emit
 from django_pdf_sign.exceptions import SessionError, VerificationError
 from django_pdf_sign.models import SignatureRecord, SigningSession
 from django_pdf_sign.pdf.embedder import embed_cms
@@ -265,6 +266,11 @@ def complete_signing(
             session.status = SigningStatus.COMPLETED
             session.completed_at = timezone.now()
             session.save(update_fields=["status", "completed_at"])
+            emit(
+                "signing_completed",
+                session_id=str(session.pk),
+                record_id=record.pk,
+            )
 
             return CompletionResult(
                 session=session, record=record, signed_pdf=signed_pdf
@@ -274,3 +280,10 @@ def complete_signing(
             status=SigningStatus.EXPIRED
         )
         raise SessionError("Срок сессии истёк") from None
+    except VerificationError as exc:
+        emit(
+            "verification_failed",
+            session_id=str(session_id),
+            reason=str(exc),
+        )
+        raise

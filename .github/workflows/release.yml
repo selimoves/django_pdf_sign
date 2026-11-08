@@ -18,7 +18,9 @@ jobs:
       - run: uv sync --all-extras
       - run: uv build
       - run: uv run twine check dist/*
-      - run: uv run python -c "import glob,zipfile;z=zipfile.ZipFile(glob.glob('dist/*.whl')[0]);print([n for n in z.namelist() if 'METADATA' in n])"
+      - name: Check version matches tag
+        run: |
+          uv run python -c "import glob,os,zipfile;tag=os.environ['GITHUB_REF_NAME'].lstrip('v');w=glob.glob('dist/*.whl')[0];z=zipfile.ZipFile(w);m=next(n for n in z.namelist() if n.endswith('METADATA'));assert f'Version: {tag}' in z.read(m).decode(), tag"
       - uses: actions/upload-artifact@v4
         with: { name: dist, path: dist/ }
 
@@ -34,6 +36,7 @@ jobs:
         with:
           repository-url: https://test.pypi.org/legacy/
           attestations: true
+          skip-existing: true
 
   pypi:
     needs: testpypi

@@ -55,6 +55,7 @@ qr = ["pyhanko[qr]>=0.38,<0.39"]
 dev = [
   "build>=1.2",
   "django-stubs>=5.0",
+  "hypothesis>=6.100",
   "mypy>=1.11",
   "psycopg[binary]>=3.2",
   "pytest>=8.3",

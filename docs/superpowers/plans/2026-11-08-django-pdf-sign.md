@@ -110,8 +110,8 @@ Each task appends its verification result here after the final step.
 | 2 | `uv run pytest tests/test_validation.py -q` | `6 passed` (цепочка, чужой корень, истёкший, отозванный, CRL, политика выключена) |
 | 3 | CRL | проверка отзыва через pyhanko-certvalidator; статусы в `ChainResult` |
 | 4 | `uv run pytest tests/test_ocsp.py -q` | `12 passed` (good/revoked/unknown, ГОСТ и SHA CertId, просрочка, подпись) |
-| 5 | `uv run pytest tests/test_timestamp.py -q` | `4 passed` (валидная метка, imprint, обязательная метка, без политики) |
-| 6 | `uv run pytest -q` | `128 passed, 1 skipped` |
+| 5 | `uv run pytest tests/test_timestamp.py -q` | `6 passed` (CAdES-T и PDF DocTimeStamp, imprint, обязательная метка) |
+| 6 | `uv run pytest -q` | `130 passed, 1 skipped` |
 | 6 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 6 | `uv run python -m mypy` | `Success: no issues found in 28 source files` |
 | 6 | `uv run pytest tests/test_docs.py -q` | `5 passed` (документация синхронизирована с кодом) |

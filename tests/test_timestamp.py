@@ -6,7 +6,10 @@ import datetime
 
 from asn1crypto import cms
 
-from django_pdf_sign.crypto.timestamp import verify_timestamp_token
+from django_pdf_sign.crypto.timestamp import (
+    verify_document_timestamp,
+    verify_timestamp_token,
+)
 from django_pdf_sign.services import VerificationPolicy, verify_cms_over_bytes
 from tests.helpers import (
     add_cms_timestamp,
@@ -76,3 +79,30 @@ def test_timestamp_present_without_policy() -> None:
     result = verify_cms_over_bytes(cms=cms_bytes, data=data)
     assert result.valid
     assert result.timestamp_ok is True
+
+
+def test_document_timestamp() -> None:
+    tsa_info, tsa_key = make_gost_certificate(common_name="TSA")
+    document_bytes = b"pdf bytes"
+    token = make_gost_timestamp(
+        signature_value=document_bytes,
+        tsa_cert_der=tsa_info.der,
+        tsa_private_key=tsa_key,
+        gen_time=GEN_TIME,
+    )
+    result = verify_document_timestamp(token, document_bytes)
+    assert result.valid
+    assert result.imprint_ok
+    assert result.gen_time == GEN_TIME
+
+
+def test_document_timestamp_wrong_data() -> None:
+    tsa_info, tsa_key = make_gost_certificate(common_name="TSA")
+    token = make_gost_timestamp(
+        signature_value=b"original",
+        tsa_cert_der=tsa_info.der,
+        tsa_private_key=tsa_key,
+    )
+    result = verify_document_timestamp(token, b"changed")
+    assert not result.valid
+    assert not result.imprint_ok

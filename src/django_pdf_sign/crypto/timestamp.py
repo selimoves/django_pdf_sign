@@ -125,9 +125,20 @@ def _verify_token_signature(
 
 
 def verify_timestamp_token(
-    token_der: bytes, *, signature_value: bytes
+    token_der: bytes,
+    *,
+    signature_value: bytes | None = None,
+    imprinted_data: bytes | None = None,
 ) -> TimestampResult:
-    """Проверить метку времени и её imprint над значением подписи."""
+    """Проверить метку времени и её imprint.
+
+    Для CAdES-T imprint считается над значением подписи
+    (``signature_value``), для PDF DocTimeStamp — над байтами документа
+    (``imprinted_data``).
+    """
+    covered = imprinted_data if imprinted_data is not None else signature_value
+    if covered is None:
+        raise ValueError("Нужно передать signature_value или imprinted_data")
     try:
         token = cms.ContentInfo.load(token_der)
         signed_data = token["content"]
@@ -149,11 +160,9 @@ def verify_timestamp_token(
     if digest_name is None:
         errors.append("Неподдерживаемый алгоритм imprint метки времени")
     else:
-        imprint_ok = imprint["hashed_message"].native == _hash(
-            digest_name, signature_value
-        )
+        imprint_ok = imprint["hashed_message"].native == _hash(digest_name, covered)
         if not imprint_ok:
-            errors.append("Imprint метки времени не совпадает с подписью")
+            errors.append("Imprint метки времени не совпадает с данными")
 
     signature_ok, signature_errors = _verify_token_signature(signed_data)
     errors.extend(signature_errors)
@@ -165,3 +174,10 @@ def verify_timestamp_token(
         gen_time=tst_info["gen_time"].native,
         errors=tuple(errors),
     )
+
+
+def verify_document_timestamp(
+    token_der: bytes, document_bytes: bytes
+) -> TimestampResult:
+    """Проверить метку времени PDF DocTimeStamp над байтами документа."""
+    return verify_timestamp_token(token_der, imprinted_data=document_bytes)

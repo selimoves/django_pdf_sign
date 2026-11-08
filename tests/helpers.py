@@ -120,24 +120,58 @@ def make_rsa_certificate(
     return parse_certificate(der), key
 
 
+def gost_sign(
+    private_key: bytes,
+    data: bytes,
+    *,
+    key_size: int = 256,
+    curve_oid: str | None = None,
+) -> bytes:
+    """Подписать данные в конвенции КриптоПро: `s ‖ r`, дайджест little-endian."""
+    curve_oid = curve_oid or DEFAULT_GOST_CURVES[key_size]
+    curve = CURVES[GOST_CURVE_OIDS[curve_oid]]
+    mode = GOST_MODES[key_size]
+    digest_name = "streebog256" if key_size == 256 else "streebog512"
+    digest = bytes(gosthash.new(digest_name, data=data).digest())
+    raw = bytes(
+        gostsignature.new(mode, curve).sign(
+            bytearray(private_key), bytearray(digest[::-1])
+        )
+    )
+    size = key_size // 8
+    return raw[size:] + raw[:size]
+
+
 def make_gost_certificate(
     *,
     common_name: str = "GOST Test Signer",
     organization: str | None = None,
     key_size: int = 256,
     curve_oid: str | None = None,
+    issuer_cert_der: bytes | None = None,
+    issuer_private_key: bytes | None = None,
+    not_before: datetime.datetime | None = None,
+    not_after: datetime.datetime | None = None,
+    is_ca: bool = False,
+    serial: int | None = None,
 ) -> tuple[CertificateInfo, bytes]:
-    """Create a self-signed GOST certificate and return it with its private key."""
+    """Создать сертификат ГОСТ и вернуть его вместе с закрытым ключом.
+
+    Без ``issuer_cert_der`` сертификат самоподписанный. Кодировка открытого
+    ключа и подписи соответствует КриптоПро (RFC 4491).
+    """
     if key_size not in (256, 512):
         raise ValueError("key_size must be 256 or 512")
     curve_oid = curve_oid or DEFAULT_GOST_CURVES[key_size]
     curve = CURVES[GOST_CURVE_OIDS[curve_oid]]
     mode = GOST_MODES[key_size]
+    size = key_size // 8
 
-    private_key = os.urandom(key_size // 8)
+    private_key = os.urandom(size)
     public_key = bytes(
         gostsignature.new(mode, curve).public_key_generate(bytearray(private_key))
     )
+    point_le = public_key[:size][::-1] + public_key[size:][::-1]
 
     spki = GostPublicKeyInfo(
         {
@@ -147,39 +181,67 @@ def make_gost_certificate(
                     "parameters": core.ObjectIdentifier(curve_oid),
                 }
             ),
-            "public_key": b"\x04" + public_key,
+            "public_key": b"\x04" + point_le,
         }
     )
     name_attributes: dict[str, str] = {"common_name": common_name, "country_name": "RU"}
     if organization:
         name_attributes["organization_name"] = organization
-    name = x509.Name.build(name_attributes)
+    subject = x509.Name.build(name_attributes)
+
+    if issuer_cert_der is not None:
+        issuer_cert = x509.Certificate.load(issuer_cert_der)
+        issuer_name = issuer_cert.subject
+        signing_key = issuer_private_key
+        if signing_key is None:
+            raise ValueError("issuer_private_key is required with issuer_cert_der")
+    else:
+        issuer_name = subject
+        signing_key = private_key
+
     signature_oid = GOST_SIGNATURE_OIDS[key_size]
     signature_algorithm = algos.SignedDigestAlgorithm(
         {"algorithm": signature_oid, "parameters": core.ObjectIdentifier(curve_oid)}
     )
+    not_before = not_before or datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC)
+    not_after = not_after or datetime.datetime(2034, 1, 1, tzinfo=datetime.UTC)
+    key_usage = {"digital_signature"}
+    if is_ca:
+        key_usage.add("key_cert_sign")
+        key_usage.add("crl_sign")
+    extensions = [
+        x509.Extension(
+            {
+                "extn_id": "basic_constraints",
+                "critical": True,
+                "extn_value": x509.BasicConstraints({"ca": is_ca}),
+            }
+        ),
+        x509.Extension(
+            {
+                "extn_id": "key_usage",
+                "critical": True,
+                "extn_value": x509.KeyUsage(key_usage),
+            }
+        ),
+    ]
     tbs = x509.TbsCertificate(
         {
             "version": "v3",
-            "serial_number": int.from_bytes(os.urandom(8), "big") | (1 << 63),
+            "serial_number": serial or int.from_bytes(os.urandom(8), "big") | (1 << 63),
             "signature": signature_algorithm,
-            "issuer": name,
+            "issuer": issuer_name,
             "validity": {
-                "not_before": core.UTCTime(
-                    datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC)
-                ),
-                "not_after": core.UTCTime(
-                    datetime.datetime(2034, 1, 1, tzinfo=datetime.UTC)
-                ),
+                "not_before": core.UTCTime(not_before),
+                "not_after": core.UTCTime(not_after),
             },
-            "subject": name,
+            "subject": subject,
             "subject_public_key_info": spki,
+            "extensions": extensions,
         }
     )
-    digest_name = "streebog256" if key_size == 256 else "streebog512"
-    digest = gosthash.new(digest_name, data=tbs.dump()).digest()
-    signature = bytes(
-        gostsignature.new(mode, curve).sign(bytearray(private_key), digest)
+    signature = gost_sign(
+        signing_key, tbs.dump(), key_size=key_size, curve_oid=curve_oid
     )
     certificate = x509.Certificate(
         {
@@ -194,7 +256,9 @@ def make_gost_certificate(
 SIGNING_TIME = datetime.datetime(2026, 11, 8, 12, 0, tzinfo=datetime.UTC)
 SHA256_OID = "2.16.840.1.101.3.4.2.1"
 STREEBOG256_OID = "1.2.643.7.1.1.2.2"
+STREEBOG512_OID = "1.2.643.7.1.1.2.3"
 GOST_SIGNATURE_256_OID = "1.2.643.7.1.1.3.2"
+GOST_SIGNATURE_512_OID = "1.2.643.7.1.1.3.3"
 
 
 def _cms_attributes(message_digest: bytes) -> cms.CMSAttributes:
@@ -275,15 +339,21 @@ def make_gost_cms(
     data: bytes = b"payload",
     signer: tuple[CertificateInfo, bytes] | None = None,
 ) -> tuple[bytes, CertificateInfo, bytes]:
-    """Build a detached GOST CAdES-BES CMS over ``data``."""
+    """Собрать отсоединённую подпись CAdES-BES ГОСТ над ``data``."""
     info, private_key = signer if signer is not None else make_gost_certificate()
-    curve = CURVES[GOST_CURVE_OIDS[info.curve_oid or ""]]
-    attributes = _cms_attributes(bytes(gosthash.new("streebog256", data=data).digest()))
-    signature = bytes(
-        gostsignature.new(MODE_256, curve).sign(
-            bytearray(private_key),
-            gosthash.new("streebog256", data=attributes.dump()).digest(),
-        )
+    key_size = info.key_size
+    curve_oid = info.curve_oid or DEFAULT_GOST_CURVES[key_size]
+    digest_name = "streebog256" if key_size == 256 else "streebog512"
+    digest_oid = STREEBOG256_OID if key_size == 256 else STREEBOG512_OID
+    signature_oid = (
+        GOST_SIGNATURE_256_OID if key_size == 256 else GOST_SIGNATURE_512_OID
+    )
+    attributes = _cms_attributes(bytes(gosthash.new(digest_name, data=data).digest()))
+    signature = gost_sign(
+        private_key,
+        attributes.dump(),
+        key_size=key_size,
+        curve_oid=curve_oid,
     )
     asn1_certificate = x509.Certificate.load(info.der)
     signer_info = cms.SignerInfo(
@@ -299,10 +369,10 @@ def make_gost_cms(
                     )
                 }
             ),
-            "digest_algorithm": algos.DigestAlgorithm({"algorithm": STREEBOG256_OID}),
+            "digest_algorithm": algos.DigestAlgorithm({"algorithm": digest_oid}),
             "signed_attrs": attributes,
             "signature_algorithm": algos.SignedDigestAlgorithm(
-                {"algorithm": GOST_SIGNATURE_256_OID}
+                {"algorithm": signature_oid}
             ),
             "signature": signature,
         }
@@ -311,7 +381,7 @@ def make_gost_cms(
         _signed_data(
             certificate_der=info.der,
             signer_info=signer_info,
-            digest_oid=STREEBOG256_OID,
+            digest_oid=digest_oid,
         ),
         info,
         data,

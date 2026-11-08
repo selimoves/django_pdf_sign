@@ -1,10 +1,10 @@
 # Публичный API
 
-Всё, что перечислено в этом документе, — стабильный контракт пакета. Остальные
-модули и имена (`django_pdf_sign.crypto.*`, `django_pdf_sign.pdf.*`,
-`django_pdf_sign.services.prepare`, `django_pdf_sign.services.complete`,
-`django_pdf_sign.services.verify`) считаются внутренними и могут меняться без
-предупреждения.
+Всё, что перечислено в этом документе, — стабильный контракт пакета. С версии
+1.0 он заморожен. Остальные модули и имена (`django_pdf_sign.crypto.*`,
+`django_pdf_sign.pdf.*`, `django_pdf_sign.services.prepare`,
+`django_pdf_sign.services.complete`, `django_pdf_sign.services.verify`)
+считаются внутренними и могут меняться без предупреждения.
 
 ## Сервисы
 
@@ -54,7 +54,9 @@
 
 ### `verify_signed_pdf`
 
-Проверяет встроенную подпись PDF. Возвращает `VerificationResult`.
+Проверяет встроенную подпись PDF. `signature_index` выбирает подпись (по
+умолчанию первая, `0`). Неверный индекс возвращает
+`VerificationResult(valid=False)` с сообщением об ошибке.
 
 ### `VerificationPolicy`
 

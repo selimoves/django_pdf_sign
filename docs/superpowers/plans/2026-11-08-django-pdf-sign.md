@@ -64,6 +64,10 @@ Each task appends its verification result here after the final step.
 | 7 | `uv run pytest -q` | `33 passed` |
 | 7 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 7 | `uv run python -m mypy` | `Success: no issues found in 12 source files` |
+| 8 | `uv run pytest tests/test_stamp.py -q` | `3 passed` |
+| 8 | `uv run pytest -q` | `36 passed` |
+| 8 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 8 | `uv run python -m mypy` | `Success: no issues found in 14 source files` |
 
 ---
 
@@ -584,7 +588,7 @@ git commit -m "feat: parse detached CMS objects"
   - `build_stamp_style(config: StampConfig) -> pyhanko.stamp.TextStampStyle`.
   - `stamp_text_params(info: CertificateInfo, *, timestamp: datetime) -> dict[str, str]` with keys `signer`, `serial`, `valid_from`, `valid_to`, `ts`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_stamp.py`:
 
@@ -610,21 +614,21 @@ def test_style_uses_bundled_font():
     assert style.text_box_style.font is not None
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/test_stamp.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement `pdf/stamp.py`**
+- [x] **Step 3: Implement `pdf/stamp.py`**
 
 Resolve the font path: explicit `font_path`, else the bundled `fonts/DejaVuSans.ttf` via `importlib.resources`. Build `opentype.GlyphAccumulatorFactory(font_path, font_size)` and `text.TextBoxStyle(font=..., font_size=...)`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `uv run pytest tests/test_stamp.py -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/django_pdf_sign/pdf tests/test_stamp.py

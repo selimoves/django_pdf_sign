@@ -117,7 +117,7 @@ exclude_lines = [
 line-length = 88
 target-version = "py311"
 src = ["src", "tests"]
-extend-exclude = ["docs"]
+extend-exclude = ["docs", "src/django_pdf_sign/migrations"]
 
 [tool.ruff.lint]
 select = [
@@ -165,3 +165,7 @@ ignore_missing_imports = true
 module = ["django_pdf_sign.crypto.certs"]
 disallow_subclassing_any = false
 warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = ["django_pdf_sign.admin"]
+disallow_any_generics = false

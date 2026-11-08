@@ -74,6 +74,11 @@ Each task appends its verification result here after the final step.
 | 9 | `uv run python -m mypy` | `Success: no issues found in 15 source files` |
 | 9 | Deviation | An unsigned placeholder cannot be read via `embedded_signatures`; tests enumerate fields with `enumerate_sig_fields` |
 | 9 | Default box | Corrected to `(57, 57, 284, 170)` = 80×40 mm, 20 mm margins |
+| 10 | `uv run pytest tests/test_models.py tests/test_admin.py -q` | `6 passed` |
+| 10 | `makemigrations django_pdf_sign` | `0001_initial.py` created |
+| 10 | `uv run pytest -q` | `49 passed` |
+| 10 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 10 | `uv run python -m mypy` | `Success: no issues found in 17 source files` |
 
 ---
 
@@ -747,7 +752,7 @@ git commit -m "feat: prepare PDF placeholders and embed CMS objects"
 - Consumes: `constants.py`, `conf.py`.
 - Produces: `SigningSession` and `SignatureRecord` exactly as described in the spec, with `SigningSession.is_expired`, `SigningSession.mark_failed(message)`, and `SignatureRecord` immutable after creation.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_models.py`:
 
@@ -800,26 +805,26 @@ def test_expired_session():
     assert session.is_expired is True
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/test_models.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement the models and admin**
+- [x] **Step 3: Implement the models and admin**
 
 `SigningSession` uses a UUID primary key, `GenericForeignKey`, and the fields listed in the spec. `SignatureRecord` is one-to-one to the session. Admin is read-only (`has_add_permission`, `has_change_permission`, `has_delete_permission` return `False` except for view).
 
-- [ ] **Step 4: Generate the migration**
+- [x] **Step 4: Generate the migration**
 
 Run: `uv run python -m django makemigrations django_pdf_sign --settings=tests.settings`
 Expected: `0001_initial.py` created.
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `uv run pytest tests/test_models.py tests/test_admin.py -q`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/django_pdf_sign/models.py src/django_pdf_sign/admin.py src/django_pdf_sign/migrations tests/test_models.py tests/test_admin.py tests/settings.py

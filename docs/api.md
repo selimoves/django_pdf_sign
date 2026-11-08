@@ -15,7 +15,7 @@
 | `prepare_signing` | `(*, document, certificate_der, user=None, file_field="file", page=None, box=None, reason=None, location=None, field_name=None, subfilter=None, bytes_reserved=None) -> PreparedSigning` |
 | `complete_signing` | `(*, session_id, cms, user=None, policy=None) -> CompletionResult` |
 | `verify_cms_over_bytes` | `(*, cms, data, expected_certificate_der=None, policy=None) -> VerificationResult` |
-| `verify_signed_pdf` | `(pdf, policy=None) -> VerificationResult` |
+| `verify_signed_pdf` | `(pdf, policy=None, signature_index=0) -> VerificationResult` |
 | `VerificationPolicy` | датакласс параметров проверки |
 | `PreparedSigning` | результат подготовки |
 | `CompletionResult` | результат встраивания |

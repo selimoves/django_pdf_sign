@@ -42,6 +42,9 @@ Each task appends its verification result here after the final step.
 | 1 | `uv run ruff check .` | `All checks passed!` |
 | 1 | `uv run ruff format --check .` | `5 files already formatted` |
 | 1 | `uv run python -m mypy` | `Success: no issues found in 1 source file` |
+| 2 | `uv run pytest tests/test_conf.py -q` | `6 passed` |
+| 2 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 2 | `uv run python -m mypy` | `Success: no issues found in 5 source files` |
 
 ---
 
@@ -103,7 +106,7 @@ git commit -m "chore: scaffold django-pdf-sign project"
   - `get_setting(name: str) -> Any` and `get_stamp_setting(name: str) -> Any`, raising `django.core.exceptions.ImproperlyConfigured` on unknown keys.
   - `DjangoPdfSignConfig` (`apps.py`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_conf.py`:
 
@@ -141,21 +144,21 @@ def test_unknown_top_level_key_raises():
         get_setting("SESSION_TTL")
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/test_conf.py -q`
 Expected: FAIL with `ModuleNotFoundError: No module named 'django_pdf_sign.conf'`.
 
-- [ ] **Step 3: Implement `constants.py`, `exceptions.py`, `conf.py`, `apps.py`**
+- [x] **Step 3: Implement `constants.py`, `exceptions.py`, `conf.py`, `apps.py`**
 
 `conf.py` exposes `DEFAULTS` and `STAMP_DEFAULTS` dicts, merges the user's `DJANGO_PDF_SIGN` over them, validates unknown keys, and caches nothing (so `override_settings` works).
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `uv run pytest tests/test_conf.py -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/django_pdf_sign/constants.py src/django_pdf_sign/exceptions.py src/django_pdf_sign/conf.py src/django_pdf_sign/apps.py tests/test_conf.py

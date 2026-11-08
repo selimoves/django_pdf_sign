@@ -1,4 +1,7 @@
-"""Публичные сервисы django-pdf-sign."""
+"""Публичные сервисы django-pdf-sign.
+
+Стабильный контракт и сигнатуры перечислены в ``docs/api.md``.
+"""
 
 from __future__ import annotations
 

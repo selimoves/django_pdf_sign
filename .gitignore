@@ -9,6 +9,7 @@ venv/
 ENV/
 
 # Distribution / packaging
+site/
 build/
 dist/
 src/django_pdf_sign/_version.py

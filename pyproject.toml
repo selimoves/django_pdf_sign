@@ -52,6 +52,7 @@ dependencies = [
 
 [project.optional-dependencies]
 qr = ["pyhanko[qr]>=0.38,<0.39"]
+docs = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.26"]
 dev = [
   "build>=1.2",
   "django-stubs>=5.0",

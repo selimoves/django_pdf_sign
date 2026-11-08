@@ -96,7 +96,7 @@ package = true
 DJANGO_SETTINGS_MODULE = "tests.settings"
 pythonpath = ["src", "."]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers --strict-config"
+addopts = "-ra --strict-markers --strict-config --cov=django_pdf_sign --cov-branch --cov-report=term-missing --cov-fail-under=82"
 markers = [
   "cryptopro_interop: интероп-проверка с реальным КриптоПро CSP (нужен Docker)",
 ]

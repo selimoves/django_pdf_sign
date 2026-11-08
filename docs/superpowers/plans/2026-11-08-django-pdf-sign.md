@@ -56,6 +56,10 @@ Each task appends its verification result here after the final step.
 | 5 | `uv run pytest -q` | `26 passed` |
 | 5 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 5 | `uv run python -m mypy` | `Success: no issues found in 10 source files` |
+| 6 | `uv run pytest tests/test_pades.py -q` | `4 passed` |
+| 6 | `uv run pytest -q` | `30 passed` |
+| 6 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 6 | `uv run python -m mypy` | `Success: no issues found in 11 source files` |
 
 ---
 
@@ -440,7 +444,7 @@ git commit -m "feat: verify GOST 34.10-2012 signatures"
   - `verify_pades(*, certificate_der: bytes, signed_attrs_der: bytes, signature: bytes, digest_algorithm: str) -> bool`.
   - Supports `sha256`, `sha384`, `sha512`, RSA PKCS#1 v1.5, RSA-PSS and ECDSA.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_pades.py`:
 
@@ -468,21 +472,21 @@ def test_tampered_data_rejected():
     )
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/test_pades.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement `verify_pades`**
+- [x] **Step 3: Implement `verify_pades`**
 
 Load the certificate with `cryptography.x509.load_der_x509_certificate`, dispatch on key type (`rsa.RSAPublicKey` → PKCS1v15, `ec.EllipticCurvePublicKey` → ECDSA), map the algorithm name to a `hashes.HashAlgorithm`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `uv run pytest tests/test_pades.py -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/django_pdf_sign/crypto/pades.py tests/test_pades.py

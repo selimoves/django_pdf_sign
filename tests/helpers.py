@@ -9,7 +9,7 @@ import os
 from asn1crypto import algos, core, keys, x509
 from cryptography import x509 as cryptography_x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
 from gostcrypto import gosthash, gostsignature
 from gostcrypto.gostsignature import (
@@ -87,6 +87,11 @@ def minimal_pdf(pages: int = 1) -> bytes:
         ).encode()
     )
     return output.getvalue()
+
+
+def sign_rsa(key: rsa.RSAPrivateKey, data: bytes) -> bytes:
+    """Sign ``data`` with RSA PKCS#1 v1.5 and SHA-256."""
+    return key.sign(data, padding.PKCS1v15(), hashes.SHA256())
 
 
 def make_rsa_certificate(

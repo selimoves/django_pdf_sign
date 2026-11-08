@@ -1,0 +1,52 @@
+site_name: django-pdf-sign
+site_description: Клиентские электронные подписи PDF-документов в Django
+site_url: https://selimoves.github.io/django_pdf_sign/
+repo_url: https://github.com/selimoves/django_pdf_sign
+repo_name: selimoves/django_pdf_sign
+docs_dir: docs
+exclude_docs: |
+  superpowers/
+
+theme:
+  name: material
+  language: ru
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: false
+            show_root_heading: true
+            merge_init_into_class: true
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Главная: index.md
+  - Быстрый старт: quickstart.md
+  - API: api.md
+  - Настройки: settings.md
+  - Штамп: stamp.md
+  - Протокол: protocol.md
+  - Правовые аспекты: legal.md
+  - Ограничения: limits.md
+  - Эксплуатация: operations.md
+  - Версионирование: versioning.md
+  - Безопасность:
+      - Модель угроз: threat-model.md
+      - Ревью: security-review.md
+  - Решение проблем: troubleshooting.md
+  - FAQ: faq.md
+  - Тестовые сертификаты: fixtures.md

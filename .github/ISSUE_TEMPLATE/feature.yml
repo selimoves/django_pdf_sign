@@ -1,0 +1,25 @@
+name: Предложение
+description: Предложить улучшение или новую возможность
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Какую задачу нужно решить
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Предлагаемое решение
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Рассмотренные альтернативы
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Влияние на публичный API
+      description: Ломает ли предложение существующий контракт из docs/api.md

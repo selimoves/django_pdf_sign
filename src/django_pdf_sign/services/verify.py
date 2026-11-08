@@ -162,9 +162,11 @@ def verify_cms_over_bytes(
 
 
 def verify_signed_pdf(
-    pdf: bytes, policy: VerificationPolicy | None = None
+    pdf: bytes,
+    policy: VerificationPolicy | None = None,
+    signature_index: int = 0,
 ) -> VerificationResult:
-    """Проверить первую подпись в PDF без оценки доверия (если не задана политика)."""
+    """Проверить подпись PDF по индексу без оценки доверия (если не задана политика)."""
     try:
         reader = PdfFileReader(io.BytesIO(pdf))
         signatures = reader.embedded_signatures
@@ -172,8 +174,10 @@ def verify_signed_pdf(
         return _invalid(f"Не удалось прочитать PDF: {exc}")
     if not signatures:
         return _invalid("В PDF нет подписей")
+    if not 0 <= signature_index < len(signatures):
+        return _invalid(f"Индекс подписи вне диапазона: {signature_index}")
 
-    signature = signatures[0]
+    signature = signatures[signature_index]
     try:
         contents = signature.sig_object["/Contents"].original_bytes
         byte_range = [int(value) for value in signature.sig_object["/ByteRange"]]

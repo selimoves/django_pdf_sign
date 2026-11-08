@@ -139,3 +139,21 @@ def test_verify_signed_pdf_rejects_unsigned_document() -> None:
     verification = verify_signed_pdf(minimal_pdf())
     assert not verification.valid
     assert "нет подписей" in verification.errors[0]
+
+
+def _sign_pdf(pdf: bytes) -> bytes:
+    info, key = make_rsa_certificate()
+    document = Document.objects.create(file=ContentFile(pdf, name="doc.pdf"))
+    prepared = prepare_signing(document=document, certificate_der=info.der)
+    cms_bytes, _, _ = make_rsa_cms(data=prepared.bytes_to_sign, signer=(info, key))
+    return complete_signing(session_id=prepared.session.pk, cms=cms_bytes).signed_pdf
+
+
+@pytest.mark.django_db
+def test_verify_signed_pdf_by_signature_index() -> None:
+    twice_signed = _sign_pdf(_sign_pdf(minimal_pdf()))
+    assert verify_signed_pdf(twice_signed).valid
+    assert verify_signed_pdf(twice_signed, signature_index=1).valid
+    invalid = verify_signed_pdf(twice_signed, signature_index=5)
+    assert not invalid.valid
+    assert "индекс" in invalid.errors[0].lower()

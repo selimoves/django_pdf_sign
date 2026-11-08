@@ -83,6 +83,11 @@ Each task appends its verification result here after the final step.
 | 11 | `uv run pytest -q` | `58 passed` |
 | 11 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 11 | `uv run python -m mypy` | `Success: no issues found in 19 source files` |
+| 12 | `uv run pytest tests/test_complete.py -q` | `11 passed` (PAdES + GOST E2E, wrong doc/cert/user, tampered, reuse, expired, garbage) |
+| 12 | pyHanko cross-check | Signed PAdES PDF reports `intact/valid/trusted` |
+| 12 | `uv run pytest -q` | `69 passed` |
+| 12 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 12 | `uv run python -m mypy` | `Success: no issues found in 20 source files` |
 
 ---
 
@@ -931,7 +936,7 @@ git commit -m "feat: add prepare_signing service"
   - `CompletionResult` frozen dataclass: `record: SignatureRecord`, `signed_pdf: bytes`.
   - `complete_signing(*, session_id, cms, user=None) -> CompletionResult`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_complete.py`:
 
@@ -982,21 +987,21 @@ def test_complete_rejects_reuse():
         complete_signing(session_id=prepared.session.pk, cms=cms_bytes)
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/test_complete.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement `complete_signing`**
+- [x] **Step 3: Implement `complete_signing`**
 
 Wrap in `transaction.atomic()`, select the session `for_update()`, validate status, expiry, user and certificate thumbprint, verify `messageDigest` and the signature, embed, save the signed PDF, create the record, mark the session completed. On verification failure mark the session failed only for unrecoverable errors; a bad CMS leaves it `prepared` so the client can retry. Never create a record on failure.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `uv run pytest tests/test_complete.py -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/django_pdf_sign/services/complete.py tests/test_complete.py

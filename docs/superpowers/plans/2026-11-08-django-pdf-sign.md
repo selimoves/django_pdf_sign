@@ -79,6 +79,10 @@ Each task appends its verification result here after the final step.
 | 10 | `uv run pytest -q` | `49 passed` |
 | 10 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 10 | `uv run python -m mypy` | `Success: no issues found in 17 source files` |
+| 11 | `uv run pytest tests/test_prepare.py -q` | `9 passed` |
+| 11 | `uv run pytest -q` | `58 passed` |
+| 11 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 11 | `uv run python -m mypy` | `Success: no issues found in 19 source files` |
 
 ---
 
@@ -848,7 +852,7 @@ git commit -m "feat: add signing session and signature record models"
   - `prepare_signing(*, document, file_field="file", user=None, certificate_der, page=-1, box=None, reason=None, location=None, field_name=None, subfilter=None, bytes_reserved=None) -> PreparedSigning`.
   - `services/__init__.py` re-exports the public services.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_prepare.py`:
 
@@ -892,21 +896,21 @@ def test_prepare_rejects_oversized_document(settings):
         prepare_signing(document=doc, certificate_der=info.der)
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/test_prepare.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement `prepare_signing`**
+- [x] **Step 3: Implement `prepare_signing`**
 
 Read the file from `getattr(document, file_field)`, enforce `MAX_DOCUMENT_BYTES`, parse the certificate, choose the subfilter (`SUBFILTER_ADOBE_PKCS7` for GOST, `SUBFILTER_PADES` otherwise, unless overridden), call `prepare_document`, store the prepared PDF via the model's `FileField.save`, and create the session.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `uv run pytest tests/test_prepare.py -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/django_pdf_sign/services tests/test_prepare.py tests/models.py

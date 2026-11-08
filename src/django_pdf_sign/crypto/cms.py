@@ -92,9 +92,15 @@ def _timestamp_token(signer_info: Any) -> bytes | None:
 def parse_cms(cms_bytes: bytes) -> ParsedCms:
     """Разобрать отсоединённую CMS в DER в :class:`ParsedCms`."""
     try:
-        content_info = cms.ContentInfo.load(cms_bytes)
+        return _parse_cms(cms_bytes)
+    except VerificationError:
+        raise
     except Exception as exc:
         raise VerificationError("Не удалось разобрать CMS") from exc
+
+
+def _parse_cms(cms_bytes: bytes) -> ParsedCms:
+    content_info = cms.ContentInfo.load(cms_bytes)
 
     if content_info["content_type"].native != "signed_data":
         raise VerificationError("CMS не является контейнером SignedData")

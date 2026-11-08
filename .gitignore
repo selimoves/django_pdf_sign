@@ -11,6 +11,7 @@ ENV/
 # Distribution / packaging
 build/
 dist/
+src/django_pdf_sign/_version.py
 *.egg-info/
 .eggs/
 wheels/

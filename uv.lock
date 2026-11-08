@@ -798,7 +798,6 @@ wheels = [
 
 [[package]]
 name = "django-pdf-sign"
-version = "0.1.0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "asn1crypto" },
@@ -841,7 +840,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=5.1" },
 ]
-provides-extras = ["qr", "dev"]
+provides-extras = ["dev", "qr"]
 
 [[package]]
 name = "django-stubs"

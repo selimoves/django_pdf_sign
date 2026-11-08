@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling>=1.27"]
+requires = ["hatchling>=1.27", "hatch-vcs>=0.5"]
 build-backend = "hatchling.build"
 
 [project]
 name = "django-pdf-sign"
-version = "0.1.0.dev0"
+dynamic = ["version"]
 description = "Client-side electronic signatures for PDF documents in Django: GOST 34.10-2012 (qualified signatures) and PAdES (RSA/ECDSA)."
 readme = "README.md"
 license = "MIT"
@@ -68,6 +68,13 @@ Homepage = "https://github.com/selimoves/django_pdf_sign"
 Documentation = "https://github.com/selimoves/django_pdf_sign#readme"
 Issues = "https://github.com/selimoves/django_pdf_sign/issues"
 Source = "https://github.com/selimoves/django_pdf_sign"
+
+[tool.hatch.version]
+source = "vcs"
+raw-options = { version_scheme = "guess-next-dev", local_scheme = "no-local-version" }
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/django_pdf_sign/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/django_pdf_sign"]

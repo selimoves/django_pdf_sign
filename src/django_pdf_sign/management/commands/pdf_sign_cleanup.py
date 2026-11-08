@@ -1,4 +1,4 @@
-"""Expire stale signing sessions and delete their prepared files."""
+"""Пометить просроченные сессии и удалить их подготовленные файлы."""
 
 from __future__ import annotations
 
@@ -13,24 +13,24 @@ from django_pdf_sign.models import SigningSession
 
 
 class Command(BaseCommand):
-    """Mark expired sessions and remove stale ones."""
+    """Пометить просроченные сессии и удалить устаревшие."""
 
     help = (
-        "Mark expired signing sessions as expired, delete their prepared "
-        "files, and remove stale sessions older than the retention window."
+        "Пометить просроченные сессии, удалить их подготовленные файлы "
+        "и убрать устаревшие сессии старше срока хранения."
     )
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(
             "--dry-run",
             action="store_true",
-            help="Report what would change without writing anything.",
+            help="Показать изменения, ничего не записывая.",
         )
         parser.add_argument(
             "--retention-days",
             type=int,
             default=7,
-            help="Delete expired or failed sessions older than this many days.",
+            help="Удалять просроченные и неудачные сессии старше стольких дней.",
         )
 
     def handle(self, *args: Any, **options: Any) -> None:
@@ -59,9 +59,9 @@ class Command(BaseCommand):
                 session.prepared_pdf.delete(save=False)
             stale.delete()
 
-        prefix = "Would expire" if dry_run else "Expired"
+        prefix = "Будет помечено" if dry_run else "Помечено"
         self.stdout.write(
             f"{prefix} {expired_count} session(s); "
-            f"{'would delete' if dry_run else 'deleted'} "
+            f"{'будет удалено' if dry_run else 'удалено'} "
             f"{stale_count} stale session(s)."
         )

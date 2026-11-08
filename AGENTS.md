@@ -1,66 +1,72 @@
 # AGENTS.md
 
-Working notes for AI agents and humans contributing to this repository.
+Рабочие заметки для ИИ-агентов и людей, которые вносят вклад в репозиторий.
 
-## What this project is
+## Что это за проект
 
-`django-pdf-sign` is a Django package for **client-side** electronic signatures
-of PDF documents. The server never holds private keys. It prepares a PDF with a
-visible stamp, hands the exact bytes to sign to the browser (CryptoPro Browser
-Plug-in), verifies the returned detached CMS, and embeds it.
+`django-pdf-sign` — Django-пакет для **клиентской** электронной подписи
+PDF-документов. Сервер никогда не хранит закрытые ключи. Он готовит PDF с
+видимым штампом, передаёт браузеру (плагину КриптоПро) точные байты для
+подписи, проверяет присланную отсоединённую CMS и встраивает её.
 
-Supported signature types:
+Поддерживаемые типы подписей:
 
-- **GOST 34.10-2012 / CAdES-BES** — Russian qualified signatures (Streebog-256/512).
-- **PAdES / RSA-ECDSA** — Adobe-compatible signatures.
+- **ГОСТ Р 34.10-2012 / CAdES-BES** — российские квалифицированные подписи
+  (Стрибог-256/512).
+- **PAdES / RSA-ECDSA** — подписи, совместимые с Adobe.
 
-## Repository layout
+## Структура репозитория
 
 ```
-src/django_pdf_sign/   package source (src layout)
-tests/                 pytest + pytest-django suite
-docs/                  design spec, implementation plan, protocol, fixtures
+src/django_pdf_sign/   исходный код пакета (src layout)
+tests/                 набор pytest + pytest-django
+docs/                  проектная спецификация, план, протокол, фикстуры
+docker/cryptopro/      образ с КриптоПро CSP для интероп-проверки
+tools/                 вспомогательные скрипты
 ```
 
-## Toolchain
+## Инструменты
 
-- Python **3.11+** (developed on 3.13 via `uv`).
-- Package manager: **uv**. Do not use plain `pip` for local development.
-- Lint/format: **ruff**. Types: **mypy** + `django-stubs`.
+- Python **3.11+** (разработка на 3.13 через `uv`).
+- Пакетный менеджер: **uv**. Не используйте обычный `pip` для локальной
+  разработки.
+- Линтер и формат: **ruff**. Типы: **mypy** + `django-stubs`.
 
-## Commands
+## Команды
 
 ```powershell
-# create/refresh the environment
+# создать или обновить окружение
 uv sync --all-extras
 
-# run the test suite
+# запустить тесты
 uv run pytest
 
-# lint, format check, type check
+# линт, проверка формата, проверка типов
 uv run ruff check .
 uv run ruff format --check .
 uv run python -m mypy
 
-# build the distribution
+# собрать дистрибутив
 uv build
 ```
 
-## Rules
+## Правила
 
-- **TDD**: write the failing test first, then the minimal implementation.
-- **No comments** except one-line "why" notes that code cannot express.
-- Every public function has a type-annotated signature and a docstring.
-- Never log or store private keys, PINs or raw CMS from real users.
-- Do not change the on-the-wire protocol in `docs/protocol.md` without a
-  matching test in `tests/test_protocol.py`.
-- Verify every step of `docs/superpowers/plans/` and record the result.
+- **TDD**: сначала падающий тест, затем минимальная реализация.
+- **Без комментариев**, кроме однострочных «почему», которые код не выражает.
+- У каждой публичной функции типизированная подпись и docstring.
+- Никогда не журналируйте и не храните закрытые ключи, PIN и сырую CMS
+  реальных пользователей.
+- Не меняйте сетевой протокол в `docs/protocol.md` без соответствующего теста
+  в `tests/test_protocol.py`.
+- Проверяйте каждый шаг `docs/superpowers/plans/` и записывайте результат.
+- Вся документация, docstring и комментарии — на русском языке.
 
-## Documentation
+## Документация
 
-- `docs/superpowers/specs/` — design documents.
-- `docs/superpowers/plans/` — implementation plans with step checklists.
-- `docs/protocol.md` — HTTP contract between server and browser client.
-- `docs/legal.md` — what makes a signature legally valid (and what this package
-  does not do).
-- `docs/fixtures.md` — provenance and regeneration of test certificates.
+- `docs/superpowers/specs/` — проектные спецификации.
+- `docs/superpowers/plans/` — планы реализации с чек-листами шагов.
+- `docs/protocol.md` — HTTP-контракт сервер/браузер.
+- `docs/legal.md` — что делает подпись юридически значимой и чего пакет не делает.
+- `docs/fixtures.md` — происхождение и перегенерация тестовых сертификатов.
+- `docs/stamp.md` — вид штампа и его настройка.

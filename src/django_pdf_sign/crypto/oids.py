@@ -1,4 +1,4 @@
-"""Object identifiers used by GOST and PAdES signatures."""
+"""Идентификаторы объектов для подписей ГОСТ и PAdES."""
 
 from __future__ import annotations
 

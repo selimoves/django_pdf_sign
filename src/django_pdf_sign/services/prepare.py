@@ -1,4 +1,4 @@
-"""Signing preparation service."""
+"""Сервис подготовки подписи."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from django_pdf_sign.pdf.embedder import prepare_document
 
 @dataclass(frozen=True)
 class PreparedSigning:
-    """Result of preparing a document for client-side signing."""
+    """Результат подготовки документа к клиентской подписи."""
 
     session: SigningSession
     bytes_to_sign: bytes
@@ -32,21 +32,21 @@ class PreparedSigning:
 
 def _read_document(document: Model, file_field: str) -> bytes:
     if document.pk is None:
-        raise SigningError("Document must be saved before signing")
+        raise SigningError("Документ должен быть сохранён до подписи")
 
     field_file = getattr(document, file_field, None)
     if field_file is None:
-        raise SigningError(f"Document has no field {file_field!r}")
+        raise SigningError(f"У документа нет поля {file_field!r}")
     if not field_file:
-        raise SigningError(f"Document has no file in field {file_field!r}")
+        raise SigningError(f"В поле {file_field!r} нет файла документа")
 
     limit = int(get_setting("MAX_DOCUMENT_BYTES"))
     try:
         size = field_file.size
     except OSError as exc:
-        raise SigningError(f"Cannot read document file: {exc}") from exc
+        raise SigningError(f"Не удалось прочитать файл документа: {exc}") from exc
     if size > limit:
-        raise SigningError(f"Document is larger than the {limit} byte limit")
+        raise SigningError(f"Документ больше лимита {limit} байт")
 
     try:
         field_file.open("rb")
@@ -55,7 +55,7 @@ def _read_document(document: Model, file_field: str) -> bytes:
         finally:
             field_file.close()
     except OSError as exc:
-        raise SigningError(f"Cannot read document file: {exc}") from exc
+        raise SigningError(f"Не удалось прочитать файл документа: {exc}") from exc
 
 
 def prepare_signing(
@@ -72,7 +72,7 @@ def prepare_signing(
     subfilter: str | None = None,
     bytes_reserved: int | None = None,
 ) -> PreparedSigning:
-    """Prepare a document, persist a signing session and return bytes to sign."""
+    """Подготовить документ, сохранить сессию и вернуть байты для подписи."""
     certificate = parse_certificate(certificate_der)
     pdf = _read_document(document, file_field)
 

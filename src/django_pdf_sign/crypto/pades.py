@@ -1,4 +1,4 @@
-"""Verification of RSA and ECDSA signatures used by PAdES."""
+"""Проверка подписей RSA и ECDSA, используемых в PAdES."""
 
 from __future__ import annotations
 
@@ -23,15 +23,17 @@ def verify_pades(
     signature: bytes,
     digest_algorithm: str,
 ) -> bool:
-    """Verify an RSA (PKCS#1 v1.5) or ECDSA signature over signed attributes."""
+    """Проверить подпись RSA (PKCS#1 v1.5) или ECDSA над атрибутами."""
     hash_class = _HASHES.get(digest_algorithm)
     if hash_class is None:
-        raise VerificationError(f"Unsupported digest algorithm: {digest_algorithm}")
+        raise VerificationError(
+            f"Неподдерживаемый алгоритм дайджеста: {digest_algorithm}"
+        )
 
     try:
         certificate = x509.load_der_x509_certificate(certificate_der)
     except Exception as exc:
-        raise VerificationError("Cannot parse signer certificate") from exc
+        raise VerificationError("Не удалось разобрать сертификат подписанта") from exc
 
     public_key = certificate.public_key()
     try:
@@ -43,7 +45,7 @@ def verify_pades(
             public_key.verify(signature, signed_attrs_der, ec.ECDSA(hash_class()))
         else:
             raise VerificationError(
-                f"Unsupported public key type: {type(public_key).__name__}"
+                f"Неподдерживаемый тип открытого ключа: {type(public_key).__name__}"
             )
     except InvalidSignature:
         return False

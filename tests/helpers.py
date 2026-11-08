@@ -1,4 +1,4 @@
-"""Shared test fixtures and builders."""
+"""Общие тестовые фикстуры и генераторы."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ GOST_MODES = {256: MODE_256, 512: MODE_512}
 
 
 def minimal_pdf(pages: int = 1) -> bytes:
-    """Build a minimal, valid PDF with the requested number of pages."""
+    """Собрать минимальный корректный PDF с нужным числом страниц."""
     if pages < 1:
         raise ValueError("pages must be positive")
 
@@ -91,14 +91,14 @@ def minimal_pdf(pages: int = 1) -> bytes:
 
 
 def sign_rsa(key: rsa.RSAPrivateKey, data: bytes) -> bytes:
-    """Sign ``data`` with RSA PKCS#1 v1.5 and SHA-256."""
+    """Подписать ``data`` алгоритмом RSA PKCS#1 v1.5 и SHA-256."""
     return key.sign(data, padding.PKCS1v15(), hashes.SHA256())
 
 
 def make_rsa_certificate(
     *, common_name: str = "Test Signer", organization: str | None = None
 ) -> tuple[CertificateInfo, rsa.RSAPrivateKey]:
-    """Create a self-signed RSA certificate and return it with its private key."""
+    """Создать самоподписанный сертификат RSA вместе с закрытым ключом."""
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     attributes = [cryptography_x509.NameAttribute(NameOID.COMMON_NAME, common_name)]
     if organization:
@@ -352,7 +352,7 @@ def make_rsa_cms(
     data: bytes = b"payload",
     signer: tuple[CertificateInfo, rsa.RSAPrivateKey] | None = None,
 ) -> tuple[bytes, CertificateInfo, bytes]:
-    """Build a detached RSA CMS over ``data``."""
+    """Собрать отсоединённую CMS RSA над ``data``."""
     info, key = signer if signer is not None else make_rsa_certificate()
     attributes = _cms_attributes(hashlib.sha256(data).digest())
     asn1_certificate = x509.Certificate.load(info.der)

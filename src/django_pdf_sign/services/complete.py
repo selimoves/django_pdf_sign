@@ -1,8 +1,9 @@
-"""Signing completion service."""
+"""Сервис завершения подписи."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from django.core.exceptions import ValidationError
@@ -10,7 +11,13 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
 
-from django_pdf_sign.constants import SigningStatus, VerificationStatus
+from django_pdf_sign.constants import (
+    ChainStatus,
+    RevocationStatus,
+    SigningStatus,
+    TimestampStatus,
+    VerificationStatus,
+)
 from django_pdf_sign.crypto.cms import ParsedCms, parse_cms
 from django_pdf_sign.crypto.digest import digest_for
 from django_pdf_sign.crypto.gost import verify_gost
@@ -25,7 +32,7 @@ from django_pdf_sign.pdf.embedder import embed_cms
 
 @dataclass(frozen=True)
 class CompletionResult:
-    """Result of completing a signing session."""
+    """Результат завершения сессии подписи."""
 
     session: SigningSession
     record: SignatureRecord
@@ -41,18 +48,18 @@ def _load_session(session_id: Any) -> SigningSession:
     try:
         return SigningSession.objects.select_for_update().get(pk=session_id)
     except (SigningSession.DoesNotExist, ValidationError, ValueError) as exc:
-        raise SessionError("Signing session not found") from exc
+        raise SessionError("Сессия подписи не найдена") from exc
 
 
 def _check_session(session: SigningSession, user: Any) -> None:
     if session.status != SigningStatus.PREPARED:
-        raise SessionError(f"Signing session is {session.status}, not prepared")
+        raise SessionError(f"Сессия в статусе {session.status}, а не prepared")
     if session.is_expired:
         raise _ExpiredSessionError(session.pk)
     if session.user_id is not None and (
         user is None or getattr(user, "pk", None) != session.user_id
     ):
-        raise SessionError("Signing session belongs to another user")
+        raise SessionError("Сессия принадлежит другому пользователю")
 
 
 def _prepared_bytes(session: SigningSession) -> bytes:
@@ -165,6 +172,44 @@ def _verify(
     return details
 
 
+def _chain_status(details: dict[str, object]) -> str:
+    chain_ok = details.get("chain_ok")
+    if chain_ok is None:
+        return ChainStatus.NOT_CHECKED
+    return ChainStatus.VALID if chain_ok else ChainStatus.INVALID
+
+
+def _revocation_status(details: dict[str, object]) -> str:
+    if details.get("revoked"):
+        return RevocationStatus.REVOKED
+    chain_ok = details.get("chain_ok")
+    if chain_ok is None:
+        return RevocationStatus.NOT_CHECKED
+    return RevocationStatus.GOOD if chain_ok else RevocationStatus.UNKNOWN
+
+
+def _timestamp_status(details: dict[str, object]) -> str:
+    timestamp_ok = details.get("timestamp_ok")
+    if timestamp_ok is None:
+        return TimestampStatus.ABSENT
+    return TimestampStatus.VALID if timestamp_ok else TimestampStatus.INVALID
+
+
+def _signing_time(details: dict[str, object]) -> datetime | None:
+    value = details.get("signing_time")
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _trusted(details: dict[str, object]) -> bool | None:
+    value = details.get("trusted")
+    return value if isinstance(value, bool) else None
+
+
 def complete_signing(
     *,
     session_id: Any,
@@ -205,6 +250,12 @@ def complete_signing(
                 cms_size=len(cms),
                 verification_status=VerificationStatus.VALID,
                 verification_details=details,
+                chain_status=_chain_status(details),
+                revocation_status=_revocation_status(details),
+                timestamp_status=_timestamp_status(details),
+                trusted=_trusted(details),
+                signing_time=_signing_time(details),
+                validation_path=details.get("validation_path") or [],
             )
             record.signed_pdf.save(
                 f"{session.pk}.pdf", ContentFile(signed_pdf), save=False
@@ -222,4 +273,4 @@ def complete_signing(
         SigningSession.objects.filter(pk=exc.session_id).update(
             status=SigningStatus.EXPIRED
         )
-        raise SessionError("Signing session has expired") from None
+        raise SessionError("Срок сессии истёк") from None

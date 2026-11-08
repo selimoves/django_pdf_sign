@@ -1,4 +1,4 @@
-"""Signing session and signature record models."""
+"""Модели сессии подписи и записи подписи."""
 
 from __future__ import annotations
 
@@ -13,7 +13,13 @@ from django.db import models
 from django.utils import timezone
 
 from django_pdf_sign.conf import get_setting
-from django_pdf_sign.constants import SigningStatus, VerificationStatus
+from django_pdf_sign.constants import (
+    ChainStatus,
+    RevocationStatus,
+    SigningStatus,
+    TimestampStatus,
+    VerificationStatus,
+)
 
 
 def _upload_to(prefix_setting: str, filename: str) -> str:
@@ -22,17 +28,17 @@ def _upload_to(prefix_setting: str, filename: str) -> str:
 
 
 def prepared_upload_to(instance: SigningSession, filename: str) -> str:
-    """Return the storage path for a prepared PDF."""
+    """Вернуть путь хранения подготовленного PDF."""
     return _upload_to("PREPARED_UPLOAD_TO", filename)
 
 
 def signed_upload_to(instance: SignatureRecord, filename: str) -> str:
-    """Return the storage path for a signed PDF."""
+    """Вернуть путь хранения подписанного PDF."""
     return _upload_to("SIGNED_UPLOAD_TO", filename)
 
 
 class SigningSession(models.Model):
-    """One in-flight client-side signing operation."""
+    """Одна выполняемая операция клиентской подписи."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     status = models.CharField(
@@ -81,26 +87,26 @@ class SigningSession(models.Model):
 
     class Meta:
         ordering = ("-created_at",)
-        verbose_name = "signing session"
-        verbose_name_plural = "signing sessions"
+        verbose_name = "сессия подписи"
+        verbose_name_plural = "сессии подписи"
 
     def __str__(self) -> str:
         return f"{self.pk} ({self.status})"
 
     @property
     def is_expired(self) -> bool:
-        """Whether the session is past its expiry moment."""
+        """Истёк ли срок действия сессии."""
         return timezone.now() >= self.expires_at
 
     def mark_failed(self, message: str) -> None:
-        """Mark the session as failed with an explanation."""
+        """Пометить сессию как неудачную с пояснением."""
         self.status = SigningStatus.FAILED
         self.error = message
         self.save(update_fields=["status", "error"])
 
 
 class SignatureRecord(models.Model):
-    """Immutable audit record of a completed signature."""
+    """Неизменяемая запись аудита завершённой подписи."""
 
     session = models.OneToOneField(
         SigningSession, on_delete=models.PROTECT, related_name="record"
@@ -135,17 +141,35 @@ class SignatureRecord(models.Model):
         max_length=16, choices=VerificationStatus.choices
     )
     verification_details = models.JSONField(default=dict, blank=True)
+    chain_status = models.CharField(
+        max_length=16,
+        choices=ChainStatus.choices,
+        default=ChainStatus.NOT_CHECKED,
+    )
+    revocation_status = models.CharField(
+        max_length=16,
+        choices=RevocationStatus.choices,
+        default=RevocationStatus.NOT_CHECKED,
+    )
+    timestamp_status = models.CharField(
+        max_length=16,
+        choices=TimestampStatus.choices,
+        default=TimestampStatus.ABSENT,
+    )
+    trusted = models.BooleanField(null=True, blank=True)
+    signing_time = models.DateTimeField(null=True, blank=True)
+    validation_path = models.JSONField(default=list, blank=True)
     signed_pdf = models.FileField(upload_to=signed_upload_to, max_length=255)
 
     class Meta:
         ordering = ("-signed_at",)
-        verbose_name = "signature record"
-        verbose_name_plural = "signature records"
+        verbose_name = "запись подписи"
+        verbose_name_plural = "записи подписей"
 
     def __str__(self) -> str:
         return f"{self.pk} ({self.verification_status})"
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self._state.adding:
-            raise ValidationError("SignatureRecord is immutable")
+            raise ValidationError("Запись SignatureRecord неизменяема")
         super().save(*args, **kwargs)

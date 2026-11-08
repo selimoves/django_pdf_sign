@@ -1,1 +1,1 @@
-"""PDF preparation, stamping and CMS embedding."""
+"""Подготовка PDF, штамп и встраивание CMS."""

@@ -1,4 +1,4 @@
-"""Access to the ``DJANGO_PDF_SIGN`` settings namespace."""
+"""Доступ к настройкам ``DJANGO_PDF_SIGN``."""
 
 from __future__ import annotations
 
@@ -90,7 +90,7 @@ def _merged() -> dict[str, Any]:
 
 
 def get_setting(name: str) -> Any:
-    """Return a top-level ``DJANGO_PDF_SIGN`` setting."""
+    """Вернуть настройку верхнего уровня ``DJANGO_PDF_SIGN``."""
     merged = _merged()
     if name not in merged:
         raise ImproperlyConfigured(f"Unknown DJANGO_PDF_SIGN setting: {name}")
@@ -98,7 +98,7 @@ def get_setting(name: str) -> Any:
 
 
 def get_stamp_setting(name: str) -> Any:
-    """Return a ``DJANGO_PDF_SIGN['STAMP']`` setting."""
+    """Вернуть настройку ``DJANGO_PDF_SIGN['STAMP']``."""
     stamp = _merged()["STAMP"]
     if name not in stamp:
         raise ImproperlyConfigured(f"Unknown DJANGO_PDF_SIGN['STAMP'] setting: {name}")

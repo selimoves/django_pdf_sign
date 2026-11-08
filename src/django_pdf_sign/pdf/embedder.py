@@ -1,4 +1,4 @@
-"""Prepare a PDF for client-side signing and embed the returned CMS."""
+"""Подготовить PDF к клиентской подписи и встроить полученную CMS."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ _SUBFILTERS = {
 
 @dataclass(frozen=True)
 class PreparedDocument:
-    """A PDF with a signature placeholder and the exact bytes to sign."""
+    """PDF с местом подписи и точные байты для подписи."""
 
     pdf_with_placeholder: bytes
     bytes_to_sign: bytes
@@ -54,7 +54,7 @@ def _resolve_page(pdf: bytes, page: int) -> int:
     count = _page_count(pdf)
     resolved = page if page >= 0 else count + page
     if not 0 <= resolved < count:
-        raise SigningError(f"Page index out of range: {page}")
+        raise SigningError(f"Индекс страницы вне диапазона: {page}")
     return resolved
 
 
@@ -62,7 +62,7 @@ def _subfilter(value: str) -> fields.SigSeedSubFilter:
     try:
         return _SUBFILTERS[value]
     except KeyError as exc:
-        raise SigningError(f"Unsupported signature subfilter: {value}") from exc
+        raise SigningError(f"Неподдерживаемый SubFilter подписи: {value}") from exc
 
 
 def prepare_document(
@@ -79,7 +79,7 @@ def prepare_document(
     bytes_reserved: int | None = None,
     timestamp: datetime | None = None,
 ) -> PreparedDocument:
-    """Add a stamp and a signature placeholder and return the bytes to sign."""
+    """Добавить штамп и место подписи и вернуть байты для подписи."""
     resolved_page = _resolve_page(pdf, page)
     digest_algorithm = algorithm_for_key_oid(certificate.key_oid)
     subfilter_value = subfilter or (
@@ -142,7 +142,7 @@ def embed_cms(
     reserved_region_end: int,
     cms: bytes,
 ) -> bytes:
-    """Write a DER-encoded CMS into the prepared placeholder."""
+    """Записать CMS в DER в подготовленное место."""
     stream = io.BytesIO(prepared_pdf)
     prepared = PreparedByteRangeDigest(
         document_digest=b"",
@@ -152,5 +152,5 @@ def embed_cms(
     try:
         prepared.fill_with_cms(stream, cms)
     except Exception as exc:
-        raise SigningError("CMS does not fit the reserved placeholder") from exc
+        raise SigningError("CMS не помещается в зарезервированное место") from exc
     return stream.getvalue()

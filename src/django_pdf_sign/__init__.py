@@ -1,4 +1,4 @@
-"""Client-side electronic signatures for PDF documents in Django."""
+"""Клиентские электронные подписи PDF-документов в Django."""
 
 from __future__ import annotations
 

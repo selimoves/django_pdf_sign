@@ -1,65 +1,63 @@
-# Protocol
+# Протокол
 
-The HTTP contract between the Django server and the browser client. The package
-does not ship views: your application implements these endpoints and calls the
-services.
+HTTP-контракт между сервером Django и браузерным клиентом. Пакет не содержит
+представлений: приложение реализует эти эндпоинты и вызывает сервисы.
 
-Three steps:
+Шаги:
 
-1. the client sends its signing certificate;
-2. the server prepares the PDF and returns the exact bytes to sign;
-3. the client signs those bytes and returns a detached CMS;
-4. the server verifies the CMS and embeds it.
+1. клиент присылает сертификат подписи;
+2. сервер готовит PDF и возвращает точные байты для подписи;
+3. клиент подписывает байты и возвращает отсоединённую CMS;
+4. сервер проверяет CMS и встраивает её.
 
-Step 1 exists because the stamp shows the signer's name, certificate serial and
-validity, and any change to the PDF after hashing would invalidate the
-signature.
+Шаг 1 нужен потому, что штамп показывает имя подписанта, серийный номер и срок
+действия сертификата, а любое изменение PDF после хэширования ломает подпись.
 
-## Constants
+## Константы
 
-Digest algorithm names, exactly as returned by `prepare_signing`:
+Имена алгоритмов дайджеста, как их возвращает `prepare_signing`:
 
-| Name | Used for |
-|------|----------|
-| `streebog256` | GOST 34.10-2012 with a 256-bit key |
-| `streebog512` | GOST 34.10-2012 with a 512-bit key |
-| `sha256` | RSA and ECDSA (PAdES) |
+| Имя | Для чего |
+|-----|----------|
+| `streebog256` | ГОСТ Р 34.10-2012 с ключом 256 бит |
+| `streebog512` | ГОСТ Р 34.10-2012 с ключом 512 бит |
+| `sha256` | RSA и ECDSA (PAdES) |
 
-Signature `/SubFilter` values:
+Значения `/SubFilter`:
 
-| Value | Used for |
-|-------|----------|
-| `/adbe.pkcs7.detached` | GOST CAdES-BES |
+| Значение | Для чего |
+|----------|----------|
+| `/adbe.pkcs7.detached` | ГОСТ CAdES-BES |
 | `/ETSI.CAdES.detached` | PAdES (RSA/ECDSA) |
 
-The server chooses the digest from the certificate's key algorithm and the
-subfilter from the signature type. Both can be overridden per call.
+Сервер выбирает дайджест по алгоритму ключа сертификата, а SubFilter — по типу
+подписи. Оба можно переопределить при вызове.
 
-## Step 1 and 2 — prepare
+## Шаги 1–2 — подготовка
 
 `POST /api/pdf-sign/prepare/`
 
-Request:
+Запрос:
 
 ```json
 {
   "document_id": 42,
-  "certificate": "<base64 of the DER certificate>",
+  "certificate": "<base64 от DER-сертификата>",
   "page": -1,
   "box": [57, 57, 284, 170],
-  "reason": "Approval",
-  "location": "Moscow"
+  "reason": "Согласование",
+  "location": "Москва"
 }
 ```
 
-- `document_id` — the primary key of the application's document.
-- `certificate` — base64 DER exported from the CryptoPro store.
-- `page` — zero-based page index; `-1` means the last page. Default `-1`.
-- `box` — optional `[x1, y1, x2, y2]` in PDF points. Default `[57, 57, 284, 170]`
-  (80×40 mm, 20 mm from the bottom-left corner).
-- `reason`, `location` — optional signature dictionary metadata.
+- `document_id` — первичный ключ документа приложения.
+- `certificate` — base64 DER, экспортированный из хранилища КриптоПро.
+- `page` — индекс страницы с нуля; `-1` означает последнюю. По умолчанию `-1`.
+- `box` — необязательный `[x1, y1, x2, y2]` в пунктах PDF. По умолчанию
+  `[57, 57, 284, 170]` (80×40 мм, отступы 20 мм от левого нижнего угла).
+- `reason`, `location` — необязательные поля словаря подписи.
 
-Response `200`:
+Ответ `200`:
 
 ```json
 {
@@ -70,18 +68,18 @@ Response `200`:
 }
 ```
 
-`bytes_to_sign` is the concatenation of the two `/ByteRange` segments:
-`pdf[0:sig_start] + pdf[sig_end:eof]`. Hash exactly these bytes.
+`bytes_to_sign` — конкатенация двух участков `/ByteRange`:
+`pdf[0:sig_start] + pdf[sig_end:eof]`. Хэшировать нужно именно эти байты.
 
-The session expires after `DJANGO_PDF_SIGN["SESSION_TTL"]` seconds (900 by
-default) and can be completed once.
+Сессия живёт `DJANGO_PDF_SIGN["SESSION_TTL"]` секунд (по умолчанию 900) и может
+быть завершена только один раз.
 
-## Step 3 — sign in the browser
+## Шаг 3 — подпись в браузере
 
-The reference client uses the CryptoPro Browser Plug-in:
+Эталонный клиент использует плагин КриптоПро:
 
 ```javascript
-async function signBytes(bytesToSign, digestAlgorithm) {
+async function signBytes(bytesToSign) {
   const store = await cadesplugin.CreateObjectAsync("CAdESCOM.Store");
   await store.Open(
     cadesplugin.CAPICOM_CURRENT_USER_STORE,
@@ -89,7 +87,7 @@ async function signBytes(bytesToSign, digestAlgorithm) {
     cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED
   );
   const certificates = await store.Certificates;
-  const certificate = await certificates.Item(1); // chosen by the user
+  const certificate = await certificates.Item(1); // выбор пользователя
 
   const signer = await cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
   signer.Certificate = certificate;
@@ -103,64 +101,88 @@ async function signBytes(bytesToSign, digestAlgorithm) {
 }
 ```
 
-`SignCades(..., true)` produces a **detached** CMS. The server does not need to
-know which cryptographic provider the client used.
+`SignCades(..., true)` создаёт **отсоединённую** CMS. Серверу не важно, каким
+криптопровайдером пользовался клиент.
 
-To export the certificate for step 1:
+Экспорт сертификата для шага 1:
 
 ```javascript
 const encoded = await certificate.Export(cadesplugin.CADESCOM_ENCODE_BASE64);
 ```
 
-## Step 4 — complete
+## Шаг 4 — завершение
 
 `POST /api/pdf-sign/complete/`
 
-Request:
+Запрос:
 
 ```json
 {
   "session_id": "6f1c1b5e-7f4a-4a5f-9f1e-0f0b6d1f0c11",
-  "cms": "<base64 of the detached CMS>"
+  "cms": "<base64 отсоединённой CMS>"
 }
 ```
 
-Response `200`:
+Ответ `200`:
 
 ```json
 {
   "signature_id": 7,
   "verification_status": "valid",
+  "chain_status": "valid",
+  "revocation_status": "good",
+  "timestamp_status": "absent",
   "signed_at": "2026-11-08T12:01:30Z"
 }
 ```
 
-The server checks, in order:
+Сервер проверяет по порядку:
 
-1. the session exists, is `prepared`, not expired and belongs to the caller;
-2. the CMS contains exactly one signer and a signer certificate;
-3. the certificate thumbprint equals the session's;
-4. the signer certificate is valid at the current time;
-5. `messageDigest` equals the digest of the stored bytes to sign;
-6. the signature over the signed attributes is cryptographically valid.
+1. сессия существует, в статусе `prepared`, не истекла и принадлежит вызывающему;
+2. в CMS ровно один подписант и есть сертификат подписанта;
+3. отпечаток сертификата совпадает с сессией;
+4. `messageDigest` совпадает с дайджестом сохранённых байтов;
+5. подпись над подписанными атрибутами криптографически верна;
+6. если задана политика — цепочка сертификатов, отзыв и метка времени.
 
-Only then is the CMS embedded, the signed PDF stored and a `SignatureRecord`
-created. A failed check leaves the session `prepared`, so the client may retry
-with a corrected CMS.
+Только после этого CMS встраивается, подписанный PDF сохраняется и создаётся
+`SignatureRecord`. Неудачная проверка оставляет сессию в `prepared`, чтобы
+клиент мог повторить с исправленной CMS.
 
-## Errors
+## Проверка (политика)
 
-| Status | Meaning |
-|--------|---------|
-| `400` | Malformed request, unparsable certificate or CMS |
-| `403` | Session belongs to another user |
-| `409` | Session is not `prepared` (already completed, failed or expired) |
-| `413` | Document exceeds `MAX_DOCUMENT_BYTES` |
-| `422` | CMS verification failed |
+`VerificationPolicy` включает дополнительные проверки:
 
-Do not return the raw CMS or the signer's certificate in error messages.
+| Поле | Смысл |
+|------|-------|
+| `check_chain` | проверять цепочку до доверенного корня |
+| `trust_roots` | DER корневых сертификатов |
+| `intermediate_certs` | DER промежуточных сертификатов |
+| `crls` | DER списков отзыва |
+| `ocsps` | DER ответов OCSP |
+| `revocation_mode` | `none`, `soft-fail`, `require` |
+| `allow_fetching` | разрешить сетевую загрузку (по умолчанию запрещено) |
+| `moment` | момент проверки |
+| `check_timestamps` | проверять метку времени CAdES-T |
+| `require_timestamp` | требовать метку времени |
 
-## Django sketch
+По умолчанию политика выключена: проверяется только сама подпись и
+`messageDigest`. Политику можно собрать из настроек:
+`VerificationPolicy.from_settings()`.
+
+## Ошибки
+
+| Статус | Значение |
+|--------|----------|
+| `400` | Некорректный запрос, сертификат или CMS |
+| `403` | Сессия принадлежит другому пользователю |
+| `409` | Сессия не в статусе `prepared` |
+| `413` | Документ больше `MAX_DOCUMENT_BYTES` |
+| `422` | Проверка CMS не пройдена |
+
+Не возвращайте в текстах ошибок сырую CMS и сертификат подписанта.
+
+## Набросок на Django
 
 ```python
 from django.http import JsonResponse
@@ -187,4 +209,4 @@ def prepare(request):
     })
 ```
 
-`complete_signing` returns `CompletionResult(session, record, signed_pdf)`.
+`complete_signing` возвращает `CompletionResult(session, record, signed_pdf)`.

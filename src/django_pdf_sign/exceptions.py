@@ -1,23 +1,23 @@
-"""Exception hierarchy for django-pdf-sign."""
+"""Иерархия исключений django-pdf-sign."""
 
 from __future__ import annotations
 
 
 class DjangoPdfSignError(Exception):
-    """Base class for every package error."""
+    """Базовое исключение пакета."""
 
 
 class CertificateError(DjangoPdfSignError):
-    """A certificate could not be parsed or is unusable."""
+    """Сертификат не удалось разобрать или он непригоден."""
 
 
 class SigningError(DjangoPdfSignError):
-    """A document could not be prepared or a CMS could not be embedded."""
+    """Документ не удалось подготовить или CMS не удалось встроить."""
 
 
 class SessionError(DjangoPdfSignError):
-    """A signing session is missing, expired, reused or owned by someone else."""
+    """Сессия отсутствует, истекла, использована или принадлежит другому."""
 
 
 class VerificationError(DjangoPdfSignError):
-    """A CMS or a signed PDF failed verification."""
+    """CMS или подписанный PDF не прошли проверку."""

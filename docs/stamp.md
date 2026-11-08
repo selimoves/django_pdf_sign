@@ -1,10 +1,10 @@
-# Signature stamp
+# Штамп подписи
 
-The stamp is a visual mark on the PDF. It is not the signature: the signature
-is the CMS embedded in the file. The stamp exists so a human reading a printed
-or on-screen copy sees who signed, with which certificate and when.
+Штамп — видимая отметка на PDF. Это не подпись: подпись — CMS, встроенная в
+файл. Штамп нужен, чтобы человек, читающий документ на экране или на бумаге,
+видел, кто подписал, каким сертификатом и когда.
 
-## Default template
+## Шаблон по умолчанию
 
 ```
 ДОКУМЕНТ ПОДПИСАН
@@ -14,36 +14,38 @@ or on-screen copy sees who signed, with which certificate and when.
 Действителен: с 01.01.2024 до 01.01.2025
 ```
 
-Parameters:
+Параметры:
 
-| Parameter | Value |
-|-----------|-------|
-| `%(signer)s` | organization and common name, or the common name alone |
-| `%(serial)s` | certificate serial number in uppercase hex |
-| `%(valid_from)s` | `notBefore` as `DD.MM.YYYY` |
-| `%(valid_to)s` | `notAfter` as `DD.MM.YYYY` |
-| `%(ts)s` | signing time (only if the template uses it) |
+| Параметр | Значение |
+|----------|----------|
+| `%(signer)s` | организация и общее имя или только общее имя |
+| `%(serial)s` | серийный номер сертификата в верхнем регистре hex |
+| `%(valid_from)s` | `notBefore` в формате `ДД.ММ.ГГГГ` |
+| `%(valid_to)s` | `notAfter` в формате `ДД.ММ.ГГГГ` |
+| `%(ts)s` | время подписи (если шаблон его использует) |
 
-## Placement
+## Размещение
 
-- Page: last page (`page=-1`) by default.
-- Box: `[57, 57, 284, 170]` points, i.e. 80×40 mm with 20 mm margins from the
-  bottom-left corner.
-- Thin border, 7 pt text, bundled DejaVu Sans (Cyrillic).
+- Страница: последняя (`page=-1`) по умолчанию.
+- Рамка: `[57, 57, 284, 170]` пунктов, то есть 80×40 мм с отступами 20 мм от
+  левого нижнего угла.
+- Тонкая рамка, текст 7 pt, встроенный DejaVu Sans (кириллица).
 
-## Rationale
+## Обоснование
 
-ГОСТ Р 7.0.97-2016 defines the "отметка об электронной подписи" as a document
-requisite that identifies the signer, the certificate and the signing time.
-Russian electronic document operators (Диадок, СБИС, Контур) render it as the
-four-line block above, which is what recipients and inspectors recognise.
+ГОСТ Р 7.0.97-2016 определяет «отметку об электронной подписи» как реквизит
+документа, идентифицирующий подписанта, сертификат и время подписания.
+Российские операторы электронного документооборота (Диадок, СБИС, Контур)
+рисуют её именно таким блоком из четырёх строк — его узнают получатели и
+проверяющие.
 
-There is no single mandatory coordinate system for the stamp. The defaults
-follow common practice: a bottom-of-page block large enough for the four lines
-and a full organisation name, with a margin that survives printing. Change the
-box and text through settings when a document has its own signature area.
+Единой обязательной системы координат для штампа нет. По умолчанию выбрано
+распространённое размещение: блок внизу страницы, достаточный для четырёх
+строк и полного названия организации, с полями, которые переживают печать.
+Если у документа есть своё место для подписи, измените рамку и текст через
+настройки.
 
-## Configuration
+## Настройка
 
 ```python
 DJANGO_PDF_SIGN = {
@@ -54,21 +56,21 @@ DJANGO_PDF_SIGN = {
                 "Сертификат: %(serial)s\n"
                 "Владелец: %(signer)s\n"
                 "Действителен: с %(valid_from)s до %(valid_to)s",
-        "FONT_PATH": None,          # None uses the bundled DejaVu Sans
+        "FONT_PATH": None,          # None — встроенный DejaVu Sans
         "FONT_SIZE": 7,
         "BORDER_WIDTH": 1,
-        "BACKGROUND_PATH": None,    # optional PNG background
+        "BACKGROUND_PATH": None,    # необязательный фон PNG
     },
 }
 ```
 
-`FONT_PATH` must point to a TrueType or OpenType font with Cyrillic glyphs.
-`BACKGROUND_PATH` requires Pillow, which is not installed by default; install
-`pyhanko[image-support]` to use it.
+`FONT_PATH` должен указывать на TrueType или OpenType шрифт с кириллицей.
+`BACKGROUND_PATH` требует Pillow; по умолчанию он не установлен, поставьте
+`pyhanko[image-support]`.
 
-## Static appearances
+## Статичные шаблоны
 
-For a fully custom look, a stamp can be drawn as a separate one-page PDF and
-passed as `StaticStampStyle`. The vector content is imported without
-rasterisation. The default text stamp is enough for the standard Russian
-appearance; a static appearance is useful for corporate templates.
+Для полностью своего вида штамп можно нарисовать отдельным PDF на одну
+страницу и передать как `StaticStampStyle`. Векторное содержимое импортируется
+без растеризации. Стандартный текстовый штамп подходит для типовой российской
+отметки; статичный шаблон полезен для корпоративных бланков.

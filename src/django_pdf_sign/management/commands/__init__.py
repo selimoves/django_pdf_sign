@@ -1,1 +1,1 @@
-"""Command modules for django-pdf-sign."""
+"""Модули команд django-pdf-sign."""

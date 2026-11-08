@@ -1,1 +1,1 @@
-"""Management commands for django-pdf-sign."""
+"""Команды управления django-pdf-sign."""

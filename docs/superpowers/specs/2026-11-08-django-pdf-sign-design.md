@@ -1,132 +1,136 @@
-# django-pdf-sign — design
+# django-pdf-sign — проектирование
 
-Date: 2026-11-08
-Status: approved for implementation
+Дата: 2026-11-08
+Статус: утверждено к реализации
 
-## 1. Intent
+## 1. Назначение
 
-Django package for **client-side** electronic signatures of PDF documents.
+Django-пакет для **клиентской** электронной подписи PDF-документов.
 
-The server never holds private keys. It prepares a PDF with a visible stamp,
-hands the exact bytes to sign to the browser (CryptoPro Browser Plug-in),
-verifies the returned detached CMS, and embeds it into the PDF.
+Сервер никогда не хранит закрытые ключи. Он готовит PDF с видимым штампом,
+передаёт браузеру (плагину КриптоПро) точные байты для подписи, проверяет
+присланную отсоединённую CMS и встраивает её в документ.
 
-Supported signature types:
+Поддерживаемые подписи:
 
-- **GOST 34.10-2012 / CAdES-BES** — Russian qualified signatures
-  (Streebog-256/512). Intended to be verifiable in Russian validators
-  (Gosuslugi, CryptoPro) when the signer holds a qualified certificate.
-- **PAdES / RSA-ECDSA** — Adobe-compatible signatures.
+- **ГОСТ Р 34.10-2012 / CAdES-BES** — российские квалифицированные подписи
+  (Стрибог-256/512), проверяемые в российских валидаторах (Госуслуги,
+  КриптоПро) при наличии квалифицированного сертификата.
+- **PAdES / RSA-ECDSA** — подписи, совместимые с Adobe.
 
-The package does **not** make a signature legally valid. Legal validity comes
-from the signer's certified cryptographic provider (СКЗИ) and qualified
-certificate. See `docs/legal.md`.
+Пакет **не** делает подпись юридически значимой. Юридическую силу дают
+сертифицированное СКЗИ подписанта и квалифицированный сертификат. См.
+`docs/legal.md`.
 
-## 2. Goals
+## 2. Цели
 
-- A small, dependable server-side core that works with keys held on the client.
-- Correct handling of the PDF `/ByteRange`, placeholder sizing, and embedding.
-- Server-side verification that the CMS covers exactly the bytes that were
-  handed to the client, and that the signer certificate matches the session.
-- Configurable visible stamp following Russian practice (ГОСТ Р 7.0.97-2016
-  and EDI operator conventions).
-- A Django layer: models, admin, settings, cleanup command. No views, no DRF.
-- Distribution on PyPI as `django-pdf-sign`, installable with plain `pip`
-  (no CryptoPro on the server).
+- Небольшое и надёжное серверное ядро, работающее с ключами на клиенте.
+- Корректная работа с `/ByteRange`, размером места подписи и встраиванием.
+- Проверка, что CMS покрывает именно те байты, что передавались клиенту, и
+  что сертификат совпадает с сессией.
+- Проверка цепочки, отзыва (CRL/OCSP) и меток времени по политике.
+- Настраиваемый видимый штамп по российской практике (ГОСТ Р 7.0.97-2016 и
+  конвенции операторов ЭДО).
+- Django-слой: модели, админка, настройки, команда очистки. Без представлений
+  и DRF.
+- Публикация на PyPI как `django-pdf-sign`, установка обычным `pip` (без
+  КриптоПро на сервере).
 
-## 3. Non-goals (v1)
+## 3. Вне рамок (v1)
 
-- Server-side signing (private keys on the server).
-- Views, DRF serializers, URLs, templates.
-- Trust chain validation, OCSP/CRL, RFC 3161 timestamps.
-- PDF/A, multiple signatures in one user flow, mobile clients.
-- Replacing the client's cryptographic provider.
+- Серверная подпись (закрытые ключи на сервере).
+- Представления, DRF, URL, шаблоны.
+- Выдача сертификатов и роль УЦ.
+- PDF/A, множественная подпись в одном пользовательском сценарии, мобильные
+  клиенты.
+- Замена криптопровайдера подписанта.
 
-## 4. Protocol
+## 4. Протокол
 
-Three steps. Full HTTP-level contract in `docs/protocol.md`.
+Три шага. Полный HTTP-контракт — в `docs/protocol.md`.
 
-### Step 1 — certificate
+### Шаг 1 — сертификат
 
-The client exports its signing certificate (DER, base64) and sends it to the
-server. The certificate is needed **before** hashing because the stamp shows
-the signer's name, certificate serial and validity, and any change to the PDF
-after hashing would invalidate the signature.
+Клиент экспортирует сертификат (DER, base64) и отправляет на сервер.
+Сертификат нужен **до** хэширования: штамп показывает имя, серийный номер и
+срок действия, а любое изменение PDF после хэширования ломает подпись.
 
-### Step 2 — prepare
+### Шаг 2 — подготовка
 
 `prepare_signing()`:
 
-1. Parse the certificate (`asn1crypto`): subject, common name, organization,
-   serial, validity, SHA-256 thumbprint, key algorithm OID, curve OID, public
-   key.
-2. Choose the digest: Streebog-256/512 for GOST keys, SHA-256 otherwise.
-3. Create the signature field and stamp, write a placeholder, compute the
-   `/ByteRange` (via pyHanko's `PdfCMSEmbedder`).
-4. Recompute the digest over the exact `/ByteRange` bytes with our own digest
-   implementation (pyHanko cannot hash Streebog).
-5. Persist a `SigningSession` with the prepared PDF, offsets, certificate and
-   expiry.
-6. Return the bytes to sign, the digest algorithm, the session id and expiry.
+1. Разбирает сертификат (`asn1crypto`): subject, общее имя, организацию,
+   серийный номер, срок действия, отпечаток SHA-256, OID ключа, OID кривой,
+   открытый ключ.
+2. Выбирает дайджест: Стрибог-256/512 для ГОСТ, SHA-256 иначе.
+3. Создаёт поле подписи и штамп, пишет заглушку, вычисляет `/ByteRange`
+   (через `PdfCMSEmbedder` pyHanko).
+4. Сохраняет `SigningSession` с подготовленным PDF, смещениями, сертификатом
+   и сроком.
+5. Возвращает байты для подписи, алгоритм дайджеста, id сессии и срок.
 
-### Step 3 — sign (client)
+### Шаг 3 — подпись (клиент)
 
-The browser signs the received bytes with the CryptoPro Browser Plug-in:
-`CadesSignedData.SignCades(signer, CADESCOM_CADES_BES, true)` (detached CMS).
-It sends the CMS (base64) back.
+Браузер подписывает байты через плагин КриптоПро:
+`CadesSignedData.SignCades(signer, CADESCOM_CADES_BES, true)` (отсоединённая
+CMS) и отправляет CMS (base64) обратно.
 
-### Step 4 — complete
+### Шаг 4 — завершение
 
 `complete_signing()`:
 
-1. Lock the session row (`select_for_update`), check status, expiry and user.
-2. Parse the CMS, extract the signer certificate, `messageDigest`, signature
-   and signed attributes.
-3. Check the certificate thumbprint equals the session's.
-4. Check `messageDigest` equals our digest of the stored bytes to sign.
-5. Verify the signature over the signed attributes with `gostcrypto` (GOST) or
-   `cryptography` (RSA/ECDSA).
-6. Embed the CMS into the placeholder, store the signed PDF, create an
-   immutable `SignatureRecord`, mark the session completed.
+1. Блокирует строку сессии (`select_for_update`), проверяет статус, срок и
+   пользователя.
+2. Разбирает CMS: сертификат подписанта, `messageDigest`, подпись,
+   подписанные атрибуты, метку времени.
+3. Проверяет отпечаток сертификата и `messageDigest`.
+4. Проверяет подпись над атрибутами (`gostcrypto` или `cryptography`).
+5. Проверяет метку времени (если есть).
+6. Проверяет цепочку и отзыв по политике.
+7. Встраивает CMS, сохраняет PDF, создаёт неизменяемый `SignatureRecord`,
+   помечает сессию завершённой.
 
-## 5. Package layout
+## 5. Структура пакета
 
 ```
 src/django_pdf_sign/
-  __init__.py            version
-  apps.py                AppConfig
-  conf.py                settings namespace, defaults, accessor
-  constants.py           enums, OIDs, algorithm names
-  exceptions.py          exception hierarchy
-  models.py              SigningSession, SignatureRecord
-  admin.py               read-only admin
+  __init__.py
+  apps.py
+  conf.py
+  constants.py
+  exceptions.py
+  models.py
+  admin.py
   migrations/
   services/
-    prepare.py           prepare_signing()
-    complete.py          complete_signing()
-    verify.py            verify_cms_over_bytes(), verify_signed_pdf()
+    prepare.py
+    complete.py
+    verify.py
   pdf/
-    embedder.py          prepare_document(), embed_cms()
-    stamp.py             StampConfig, build_stamp_style(), text params
+    embedder.py
+    stamp.py
   crypto/
-    certs.py             parse_certificate()
-    cms.py               parse_cms()
-    digest.py            digest_for(), algorithm_for_key()
-    gost.py              verify_gost()
-    pades.py             verify_pades()
-    oids.py              GOST OIDs, curve OIDs
+    certs.py
+    cms.py
+    digest.py
+    gost.py
+    oids.py
+    ocsp.py
+    pades.py
+    policy.py
+    timestamp.py
+    validation.py
   fonts/
-    DejaVuSans.ttf
-    LICENSE.DejaVu
   management/commands/pdf_sign_cleanup.py
 ```
 
-## 6. Public API
+## 6. Публичный API
 
 ```python
 from django_pdf_sign.services import (
     prepare_signing, complete_signing,
     verify_cms_over_bytes, verify_signed_pdf,
+    VerificationPolicy,
 )
 
 prepared = prepare_signing(
@@ -144,40 +148,42 @@ result = complete_signing(
     session_id=prepared.session.pk,
     cms=cms_bytes,
     user=request.user,
+    policy=VerificationPolicy.from_settings(),
 )
-# result.record, result.signed_pdf
+# result.session, result.record, result.signed_pdf
 ```
 
-Return types are frozen dataclasses so callers can rely on names.
+Возвращаемые типы — замороженные dataclass'ы, чтобы вызывающий код мог
+полагаться на имена полей.
 
-## 7. Django layer
+## 7. Django-слой
 
-### Models
+### Модели
 
-`SigningSession` (UUID primary key) holds one in-flight signing:
+`SigningSession` (UUID первичный ключ) — одна выполняемая подпись:
 
-- generic relation to the document (`content_type`, `object_id`, `document`);
+- общая связь с документом (`content_type`, `object_id`, `document`);
 - `user` (nullable);
-- certificate metadata (DER, subject, common name, organization, serial,
-  thumbprint, validity);
+- метаданные сертификата (DER, subject, общее имя, организация, серийный
+  номер, отпечаток, срок);
 - `digest_algorithm`, `subfilter`, `field_name`, `page`, `box`,
   `bytes_reserved`;
-- `prepared_pdf` (`FileField`), `reserved_region_start`,
-  `reserved_region_end`;
+- `prepared_pdf`, `reserved_region_start`, `reserved_region_end`;
 - `status` (`prepared` / `completed` / `failed` / `expired`), `created_at`,
   `expires_at`, `completed_at`, `error`, `metadata`.
 
-`SignatureRecord` is the immutable audit row: one-to-one to the session,
-certificate metadata, digest algorithm, subfilter, CMS size, verification
-status and details, signed PDF.
+`SignatureRecord` — неизменяемая запись аудита: связь один-к-одному с сессией,
+метаданные сертификата, дайджест, SubFilter, размер CMS, результат проверки,
+статус цепочки, отзыва и метки времени, доверенность, время подписи, путь
+проверки и подписанный PDF.
 
-### Admin
+### Админка
 
-Read-only: list, filter by status/algorithm/date, search by subject/serial/
-thumbprint. No add, no change of signed data. A manual "mark expired" action
-is out of scope for v1.
+Только чтение: список, фильтры по статусам, алгоритму и датам, поиск по
+subject/серийному номеру/отпечатку. Без добавления и изменения подписанных
+данных.
 
-### Settings
+### Настройки
 
 ```python
 DJANGO_PDF_SIGN = {
@@ -187,76 +193,81 @@ DJANGO_PDF_SIGN = {
     "DEFAULT_PAGE": -1,
     "DEFAULT_BOX": (57, 57, 284, 170),
     "SUBFILTER": None,
-    "STAMP": {
-        "TEXT": DEFAULT_STAMP_TEXT,
-        "FONT_PATH": None,
-        "FONT_SIZE": 7,
-        "BORDER_WIDTH": 1,
-        "BACKGROUND_PATH": None,
+    "STAMP": {...},
+    "VERIFY": {
+        "CHECK_CHAIN": False,
+        "TRUST_ROOTS": (),
+        "INTERMEDIATE_CERTS": (),
+        "CRLS": (),
+        "OCSPS": (),
+        "REVOCATION_MODE": "soft-fail",
+        "ALLOW_FETCHING": False,
+        "CHECK_TIMESTAMPS": False,
+        "REQUIRE_TIMESTAMP": False,
     },
     "PREPARED_UPLOAD_TO": "django_pdf_sign/prepared/%Y/%m/%d",
     "SIGNED_UPLOAD_TO": "django_pdf_sign/signed/%Y/%m/%d",
 }
 ```
 
-Unknown keys raise `ImproperlyConfigured` on first access. `FONT_PATH=None`
-means the bundled DejaVu Sans.
+Неизвестные ключи вызывают `ImproperlyConfigured` при первом обращении.
+`FONT_PATH=None` означает встроенный DejaVu Sans.
 
-### Cleanup
+### Очистка
 
-`python manage.py pdf_sign_cleanup` marks expired `prepared` sessions as
-`expired`, deletes their prepared files, and deletes expired sessions older
-than a retention window. Supports `--dry-run`.
+`python manage.py pdf_sign_cleanup` помечает просроченные `prepared`-сессии как
+`expired`, удаляет их подготовленные файлы и удаляет устаревшие сессии старше
+срока хранения. Поддерживает `--dry-run` и `--retention-days`.
 
-## 8. Cryptography
+## 8. Криптография
 
-### Certificate parsing
+### Разбор сертификата
 
-`asn1crypto.x509.Certificate` for the certificate body. The GOST public key
-lives in `SubjectPublicKeyInfo` as a BIT STRING wrapping a DER OCTET STRING of
-`0x04 || X || Y`; `asn1crypto`'s default `PublicKeyInfo` rejects unknown
-algorithm OIDs, so a small subclass with an explicit `public_key` spec is used
-for the SPKI. Verified in the spike.
+`asn1crypto.x509.Certificate` для тела сертификата. Открытый ключ ГОСТ лежит
+в `SubjectPublicKeyInfo` как BIT STRING с OCTET STRING `X ‖ Y`; стандартный
+`PublicKeyInfo` не знает OID ГОСТ, поэтому используется подкласс с явной
+спецификацией `public_key`. КриптоПро кодирует координаты в little-endian, а
+параметры кривой — как SEQUENCE из двух OID; поддержаны оба варианта.
 
-Detected algorithms:
+Определяемые алгоритмы:
 
-- key OID `1.2.643.7.1.1.1.1` → GOST 2012-256, digest `streebog256`;
-- key OID `1.2.643.7.1.1.1.2` → GOST 2012-512, digest `streebog512`;
-- RSA/EC OIDs → `sha256`.
+- OID ключа `1.2.643.7.1.1.1.1` → ГОСТ 2012-256, дайджест `streebog256`;
+- OID ключа `1.2.643.7.1.1.1.2` → ГОСТ 2012-512, дайджест `streebog512`;
+- OID RSA/EC → `sha256`.
 
-### Digest
+### Дайджест
 
 - `streebog256` / `streebog512` → `gostcrypto.gosthash`.
-- `sha256` → `hashlib`.
+- `sha256` и другие SHA-2 → `hashlib`.
 
-The `/ByteRange` bytes are `pdf[:start] + pdf[end:]`, matching pyHanko's
-definition exactly.
+Байты `/ByteRange` — это `pdf[:start] + pdf[end:]`, как у pyHanko.
 
-### Verification
+### Проверка ГОСТ
 
-- GOST: `gostcrypto.gostsignature.new(MODE_256/512, curve)` with the curve
-  selected by the certificate's parameter OID
-  (`CURVES_R_1323565_1_024_2019`); public key = `X || Y` (the `0x04` point
-  prefix stripped).
-- PAdES: `cryptography` `public_key.verify(signature, signed_attrs_der, ...)`.
-- Signed attributes are verified in their `SET OF` encoding: the CMS encodes
-  them implicitly tagged (`0xA0`), the signature covers `0x31 || ...`.
+КриптоПро хранит ключ как `X ‖ Y` в little-endian, подпись как `s ‖ r`, а хэш
+интерпретирует как число в little-endian (RFC 4491). `gostcrypto` работает в
+big-endian и порядке `r ‖ s`. Поэтому ключ нормализуется проверкой
+принадлежности точки кривой, а для совместимости проверяются обе конвенции
+подписи и дайджеста.
 
-### What is checked
+### Проверка цепочки и отзыва
 
-- `messageDigest` equals our digest of the stored bytes to sign;
-- certificate thumbprint equals the session's;
-- the cryptographic signature over the signed attributes is valid;
-- session is not expired, not reused, belongs to the caller.
+`pyhanko-certvalidator` с собственным `SignatureValidator`, который проверяет
+ГОСТ-подписи через `gostcrypto`, а RSA/ECDSA — через `cryptography`. CRL
+передаются в контекст проверки; OCSP разбирается собственным модулем, потому
+что стандартный валидатор не умеет ГОСТ `CertId`.
 
-### What is not checked
+### Что проверяется
 
-Trust chain, revocation, timestamp. Documented as an explicit non-goal; a
-`Verifier` extension point is left for later.
+- `messageDigest` равен дайджесту сохранённых байтов;
+- отпечаток сертификата равен отпечатку сессии;
+- криптографическая подпись над атрибутами верна;
+- сессия не истекла, не использована и принадлежит вызывающему;
+- при заданной политике — цепочка, отзыв и метка времени.
 
-## 9. Stamp
+## 9. Штамп
 
-Default template:
+Шаблон по умолчанию:
 
 ```
 ДОКУМЕНТ ПОДПИСАН
@@ -266,59 +277,61 @@ Default template:
 Действителен: с %(valid_from)s до %(valid_to)s
 ```
 
-- `%(signer)s` — common name, or organization + common name when both exist.
-- `%(serial)s` — uppercase hex serial.
-- `%(valid_from)s`, `%(valid_to)s` — `DD.MM.YYYY`.
-- Optional `%(ts)s` — signing time.
-- Font: bundled DejaVu Sans (Cyrillic).
-- Placement: last page (`page=-1`) by default, box `(57, 57, 284, 170)`
-  (80×40 mm, 20 mm from the bottom-left corner).
-- Background image and custom text via settings.
+- `%(signer)s` — общее имя или организация и общее имя.
+- `%(serial)s` — серийный номер в верхнем регистре hex.
+- `%(valid_from)s`, `%(valid_to)s` — `ДД.ММ.ГГГГ`.
+- Необязательный `%(ts)s` — время подписи.
+- Шрифт: встроенный DejaVu Sans (кириллица).
+- Размещение: последняя страница, рамка `(57, 57, 284, 170)` (80×40 мм,
+  отступы 20 мм).
+- Фон и текст настраиваются.
 
-Rationale and standard references in `docs/stamp.md`.
+Обоснование и ссылки на стандарты — в `docs/stamp.md`.
 
-## 10. Packaging and quality gates
+## 10. Упаковка и качество
 
 - `pyproject.toml` (hatchling), Python ≥ 3.11, Django ≥ 4.2.
-- Runtime dependencies: `django`, `pyhanko[opentype]`, `asn1crypto`,
-  `cryptography`, `gostcrypto`.
-- Optional: `qr` extra.
-- ruff (lint + format), mypy strict, pytest + pytest-django.
-- CI matrix: Python 3.11/3.12/3.13 × Django 4.2/5.2/6.1 (where compatible),
-  Linux and Windows.
-- Build with `uv build`, check with `twine check`.
+- Зависимости: `django`, `pyhanko[opentype]`, `asn1crypto`, `cryptography`,
+  `gostcrypto`.
+- Опционально: `qr`.
+- ruff (линт и формат), mypy strict, pytest + pytest-django.
+- CI: Python 3.11/3.12/3.13 × Django 4.2/5.2/6.1, Linux и Windows.
+- Сборка `uv build`, проверка `twine check`.
 
-## 11. Test strategy
+## 11. Тесты
 
-- **PAdES end-to-end**: self-signed RSA certificate, prepare → sign → complete
-  → validate with pyHanko. Proven in the spike.
-- **GOST end-to-end**: generated GOST certificate and CMS, prepare → sign →
-  complete → verify with our verifier. Proven in the spike.
-- **Negative cases**: tampered bytes, wrong certificate, expired session,
-  reused session, wrong user, oversized document, malformed CMS.
-- **Fixtures**: generated deterministically per test run; CryptoPro's official
-  test root certificate and CRL vendored for parsing/chain tests. Provenance in
-  `docs/fixtures.md`.
-- Real CryptoPro CMS interop is an integration test guarded by an environment
-  variable; it cannot run in CI without the CSP.
+- **PAdES end-to-end**: самоподписанный сертификат RSA, подготовка → подпись →
+  завершение → проверка pyHanko.
+- **ГОСТ end-to-end**: сгенерированный сертификат и CMS, полный цикл.
+- **Реальный КриптоПро**: подпись сертификата и CRL из официальных фикстур.
+- **Цепочка, CRL, OCSP, метки времени**: положительные и отрицательные
+  сценарии.
+- **Негативные случаи**: подмена байтов, чужой сертификат, истёкшая и
+  повторно использованная сессия, чужой пользователь, слишком большой
+  документ, битая CMS.
+- **Интероп**: реальная CMS КриптоПро через Docker, под переменной окружения.
+- **Фикстуры**: генерируются при каждом прогоне; официальные материалы
+  КриптоПро вендорятся. Происхождение — в `docs/fixtures.md`.
 
-## 12. Risks
+## 12. Риски
 
-| Risk | Mitigation |
-|---|---|
-| pyHanko internal API changes | isolate in `pdf/embedder.py`, pin `<0.39`, integration tests |
-| GOST CMS differs from CryptoPro output | verify against a real CryptoPro fixture in an optional integration test; fail closed |
-| Streebog slower than SHA | benchmark; document limits; `MAX_DOCUMENT_BYTES` |
-| Large PDFs in memory | v1 limit plus documented limit; streaming later |
-| SubFilter expectations differ between validators | configurable, default `adbe.pkcs7.detached` for GOST |
-| Legal validity misunderstood | explicit `docs/legal.md` |
+| Риск | Мера |
+|------|------|
+| Внутренний API pyHanko меняется | изоляция в `pdf/embedder.py`, пин `<0.39`, интеграционные тесты |
+| Кодировка ГОСТ у разных реализаций | нормализация по точке кривой и обе конвенции подписи |
+| Стрибог медленнее SHA | лимит `MAX_DOCUMENT_BYTES`, бенчмарк |
+| Большие PDF в памяти | лимит в v1, потоковая обработка позже |
+| Ожидания по SubFilter различаются | настраиваемый, по умолчанию `adbe.pkcs7.detached` для ГОСТ |
+| Непонимание юридической силы | явный `docs/legal.md` |
 
-## 13. Decisions recorded
+## 13. Зафиксированные решения
 
-- Client-side keys only; no server signing in v1.
-- Client returns a complete detached CMS; the server does not build CMS from a
-  raw signature.
-- Server verifies the CMS itself with `gostcrypto`, no CryptoPro on the server.
-- Package ships services and models, not views.
-- Package name `django-pdf-sign`.
-- Stamp carries certificate data, therefore the certificate is sent in step 1.
+- Только клиентские ключи; серверной подписи в v1 нет.
+- Клиент возвращает готовую отсоединённую CMS; сервер не собирает CMS из сырой
+  подписи.
+- Сервер проверяет CMS сам через `gostcrypto`, без КриптоПро.
+- Пакет даёт сервисы и модели, а не представления.
+- Имя пакета `django-pdf-sign`.
+- Штамп содержит данные сертификата, поэтому сертификат приходит на шаге 1.
+- Проверка цепочки, отзыва и меток времени включается политикой; по умолчанию
+  проверяется только подпись.

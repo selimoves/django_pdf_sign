@@ -1,4 +1,4 @@
-"""Enumerations and protocol constants."""
+"""Перечисления и константы протокола."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ DEFAULT_STAMP_TEXT = (
 
 
 class SigningStatus(models.TextChoices):
-    """Lifecycle of a signing session."""
+    """Жизненный цикл сессии подписи."""
 
     PREPARED = "prepared", "Prepared"
     COMPLETED = "completed", "Completed"
@@ -30,7 +30,32 @@ class SigningStatus(models.TextChoices):
 
 
 class VerificationStatus(models.TextChoices):
-    """Outcome of CMS verification."""
+    """Итог проверки CMS."""
 
     VALID = "valid", "Valid"
     INVALID = "invalid", "Invalid"
+
+
+class ChainStatus(models.TextChoices):
+    """Результат проверки цепочки сертификатов."""
+
+    NOT_CHECKED = "not_checked", "Не проверялась"
+    VALID = "valid", "Действительна"
+    INVALID = "invalid", "Недействительна"
+
+
+class RevocationStatus(models.TextChoices):
+    """Результат проверки отзыва."""
+
+    NOT_CHECKED = "not_checked", "Не проверялся"
+    GOOD = "good", "Не отозван"
+    REVOKED = "revoked", "Отозван"
+    UNKNOWN = "unknown", "Нет данных"
+
+
+class TimestampStatus(models.TextChoices):
+    """Результат проверки метки времени."""
+
+    ABSENT = "absent", "Отсутствует"
+    VALID = "valid", "Верна"
+    INVALID = "invalid", "Неверна"

@@ -1,53 +1,57 @@
-# Legal validity
+# Юридическая сила
 
-This package builds and verifies PDF signatures. It does **not** make a
-signature legally valid by itself, and it is not a qualified electronic
-signature service.
+Пакет создаёт и проверяет подписи PDF. Он **не** делает подпись юридически
+значимой сам по себе и не является сервисом квалифицированной электронной
+подписи.
 
-## What the package does
+## Что делает пакет
 
-- Prepares a PDF with a visible stamp and a signature placeholder.
-- Returns the exact bytes to sign.
-- Verifies that the returned CMS covers those bytes and belongs to the
-  certificate that was used to prepare the document.
-- Embeds the CMS and stores an audit record.
+- Готовит PDF с видимым штампом и местом подписи.
+- Возвращает точные байты для подписи.
+- Проверяет, что CMS покрывает эти байты и принадлежит сертификату, по
+  которому готовился документ.
+- Проверяет цепочку сертификатов, отзыв (CRL/OCSP) и метки времени, если
+  задана политика.
+- Встраивает CMS и сохраняет запись аудита.
 
-## What gives a signature legal weight
+## Что даёт подписи юридический вес
 
-For a Russian qualified electronic signature (КЭП):
+Для квалифицированной электронной подписи (КЭП) в России:
 
-- a **qualified certificate** issued by an accredited certification authority;
-- a **certified cryptographic provider** (СКЗИ) on the signer's side, for
-  example CryptoPro CSP with a valid licence;
-- the signer's **private key** stays in that provider (a token, the registry or
-  an HSM). It never reaches this package or the server.
+- **квалифицированный сертификат** аккредитованного удостоверяющего центра;
+- **сертифицированное СКЗИ** на стороне подписанта, например КриптоПро CSP с
+  действующей лицензией;
+- **закрытый ключ** хранится в этом СКЗИ (токен, реестр или HSM) и никогда не
+  попадает в пакет или на сервер.
 
-For a PAdES signature verified in Adobe:
+Для подписи PAdES, проверяемой в Adobe:
 
-- a certificate chaining to a trust anchor Adobe recognises;
-- a signature format Adobe accepts (PAdES, RSA or ECDSA).
+- сертификат, выстраивающий цепочку к доверенному корню Adobe;
+- формат подписи, который Adobe принимает (PAdES, RSA или ECDSA).
 
-The package supports both, but it does not perform trust-chain validation,
-revocation checks (OCSP/CRL) or timestamping in version 1. A recipient that
-needs those checks uses a qualified validator: Gosuslugi, CryptoPro, or a
-commercial validation service.
+Пакет поддерживает оба варианта. Проверку цепочки, отзыва и меток времени он
+умеет выполнять сам, если передать политику и материалы проверки. Если нужна
+юридически значимая проверка в инфраструктуре РФ, её выполняет
+квалифицированный валидатор: Госуслуги, КриптоПро или коммерческий сервис.
 
-## Private keys
+## Закрытые ключи
 
-The server never holds, receives, logs or stores a private key, a PIN or a key
-container. Only the public certificate and the finished CMS are handled.
+Сервер никогда не хранит, не получает, не журналирует и не сохраняет закрытый
+ключ, PIN или контейнер ключа. Обрабатываются только открытый сертификат и
+готовая CMS.
 
-## What to tell users
+## Что говорить пользователям
 
-- The stamp is informational; the signature is the CMS, not the image.
-- A signature is only as trustworthy as the certificate behind it.
-- Changing the PDF after signing invalidates the signature, even if the change
-  looks harmless.
-- Keep the signed PDF and the audit record; the audit record alone is not the
-  signed document.
+- Штамп информативен; подпись — это CMS, а не картинка.
+- Подпись надёжна ровно настолько, насколько надёжен сертификат за ней.
+- Изменение PDF после подписи делает подпись недействительной, даже если
+  изменение кажется безобидным.
+- Храните подписанный PDF и запись аудита; запись аудита сама по себе не
+  является подписанным документом.
 
-## Audit
+## Аудит
 
-`SignatureRecord` stores the signer certificate, thumbprint, digest algorithm,
-subfilter, CMS size, verification result and the signed PDF. It is immutable
-at the model level. Store it according to your organisation's retention policy.
+`SignatureRecord` хранит сертификат подписанта, отпечаток, алгоритм дайджеста,
+SubFilter, размер CMS, результат проверки, статус цепочки, отзыва и метки
+времени, а также подписанный PDF. На уровне модели запись неизменяема.
+Храните её согласно политике хранения вашей организации.

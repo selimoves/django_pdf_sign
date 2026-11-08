@@ -1,4 +1,4 @@
-"""Signature stamp configuration and rendering."""
+"""Настройка и отрисовка штампа подписи."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ BUNDLED_FONT = Path(__file__).resolve().parent.parent / "fonts" / "DejaVuSans.tt
 
 @dataclass(frozen=True)
 class StampConfig:
-    """Visual configuration of the signature stamp."""
+    """Визуальная конфигурация штампа подписи."""
 
     text: str
     font_path: str | None
@@ -28,7 +28,7 @@ class StampConfig:
 
     @classmethod
     def from_settings(cls) -> StampConfig:
-        """Build the stamp configuration from ``DJANGO_PDF_SIGN['STAMP']``."""
+        """Собрать конфигурацию из ``DJANGO_PDF_SIGN['STAMP']``."""
         return cls(
             text=get_stamp_setting("TEXT"),
             font_path=get_stamp_setting("FONT_PATH"),
@@ -39,7 +39,7 @@ class StampConfig:
 
 
 def build_stamp_style(config: StampConfig) -> TextStampStyle:
-    """Build a pyHanko text stamp style from ``config``."""
+    """Собрать стиль текстового штампа pyHanko."""
     font = GlyphAccumulatorFactory(
         config.font_path or str(BUNDLED_FONT), config.font_size
     )
@@ -60,7 +60,7 @@ def build_stamp_style(config: StampConfig) -> TextStampStyle:
 
 
 def stamp_text_params(info: CertificateInfo, *, timestamp: datetime) -> dict[str, str]:
-    """Return the interpolation parameters for the stamp template."""
+    """Вернуть параметры подстановки для шаблона штампа."""
     return {
         "signer": display_name(info),
         "serial": info.serial_number,

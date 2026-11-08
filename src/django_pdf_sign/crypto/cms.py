@@ -1,4 +1,4 @@
-"""Parsing of detached CMS (CAdES-BES / PAdES) signature containers."""
+"""Разбор отсоединённых контейнеров CMS (CAdES-BES / PAdES)."""
 
 from __future__ import annotations
 
@@ -31,9 +31,9 @@ def _certificate_set(signed_data: Any) -> Any:
     try:
         certificates = signed_data["certificates"]
     except (KeyError, TypeError) as exc:
-        raise VerificationError("CMS has no certificates") from exc
+        raise VerificationError("В CMS нет сертификатов") from exc
     if certificates is None:
-        raise VerificationError("CMS has no certificates")
+        raise VerificationError("В CMS нет сертификатов")
     return certificates
 
 
@@ -63,7 +63,7 @@ def _find_certificate(signed_data: Any, signer_id: Any) -> x509.Certificate:
                     return certificate
             except (KeyError, ValueError):
                 continue
-    raise VerificationError("Signer certificate not found in CMS")
+    raise VerificationError("Сертификат подписанта не найден в CMS")
 
 
 def _signed_attribute(attributes: Any, name: str) -> Any:
@@ -90,38 +90,40 @@ def _timestamp_token(signer_info: Any) -> bytes | None:
 
 
 def parse_cms(cms_bytes: bytes) -> ParsedCms:
-    """Parse a DER-encoded detached CMS into a :class:`ParsedCms`."""
+    """Разобрать отсоединённую CMS в DER в :class:`ParsedCms`."""
     try:
         content_info = cms.ContentInfo.load(cms_bytes)
     except Exception as exc:
-        raise VerificationError("Cannot parse CMS") from exc
+        raise VerificationError("Не удалось разобрать CMS") from exc
 
     if content_info["content_type"].native != "signed_data":
-        raise VerificationError("CMS is not a SignedData container")
+        raise VerificationError("CMS не является контейнером SignedData")
 
     signed_data = content_info["content"]
     signer_infos = signed_data["signer_infos"]
     if len(signer_infos) != 1:
-        raise VerificationError("CMS must contain exactly one SignerInfo")
+        raise VerificationError("CMS должна содержать ровно один SignerInfo")
     signer_info = signer_infos[0]
 
     try:
         attributes = signer_info["signed_attrs"]
     except (KeyError, TypeError) as exc:
-        raise VerificationError("CMS has no signed attributes") from exc
+        raise VerificationError("В CMS нет подписанных атрибутов") from exc
     if attributes is None:
-        raise VerificationError("CMS has no signed attributes")
+        raise VerificationError("В CMS нет подписанных атрибутов")
 
     message_digest = _signed_attribute(attributes, "message_digest")
     if not isinstance(message_digest, bytes):
-        raise VerificationError("CMS has no messageDigest attribute")
+        raise VerificationError("В CMS нет атрибута messageDigest")
 
     digest_oid = signer_info["digest_algorithm"]["algorithm"].dotted
     digest_algorithm = GOST_DIGEST_OIDS.get(digest_oid) or SHA2_DIGEST_OIDS.get(
         digest_oid
     )
     if digest_algorithm is None:
-        raise VerificationError(f"Unsupported CMS digest algorithm: {digest_oid}")
+        raise VerificationError(
+            f"Неподдерживаемый алгоритм дайджеста CMS: {digest_oid}"
+        )
 
     certificate = _find_certificate(signed_data, signer_info["sid"])
     signing_time = _signed_attribute(attributes, "signing_time")

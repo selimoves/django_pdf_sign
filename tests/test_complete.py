@@ -52,6 +52,9 @@ def test_complete_pades_end_to_end() -> None:
     assert result.session.completed_at is not None
     assert result.record.verification_status == VerificationStatus.VALID
     assert result.record.cms_size == len(cms_bytes)
+    assert result.record.chain_status == "not_checked"
+    assert result.record.revocation_status == "not_checked"
+    assert result.record.timestamp_status == "absent"
     assert result.signed_pdf
     assert result.record.signed_pdf.read()
 
@@ -214,6 +217,9 @@ def test_complete_with_trusted_chain() -> None:
     )
     assert result.record.verification_status == VerificationStatus.VALID
     assert result.record.verification_details["chain_ok"] is True
+    assert result.record.chain_status == "valid"
+    assert result.record.revocation_status == "good"
+    assert result.record.trusted is True
 
 
 @pytest.mark.django_db

@@ -1,4 +1,4 @@
-"""Digest primitives for GOST and SHA-2."""
+"""Дайджесты ГОСТ и SHA-2."""
 
 from __future__ import annotations
 
@@ -18,16 +18,16 @@ _STREEBOG_ALGORITHMS = frozenset({DIGEST_STREEBOG_256, DIGEST_STREEBOG_512})
 
 
 def digest_for(algorithm: str, data: bytes) -> bytes:
-    """Return the digest of ``data`` using the named algorithm."""
+    """Вернуть дайджест ``data`` указанным алгоритмом."""
     if algorithm in _STREEBOG_ALGORITHMS:
         return bytes(gosthash.new(algorithm, data=data).digest())
     if algorithm in _HASHLIB_ALGORITHMS:
         return hashlib.new(algorithm, data).digest()
-    raise ValueError(f"Unsupported digest algorithm: {algorithm}")
+    raise ValueError(f"Неподдерживаемый алгоритм дайджеста: {algorithm}")
 
 
 def algorithm_for_key_oid(key_oid: str) -> str:
-    """Return the digest algorithm that belongs to a public key algorithm OID."""
+    """Вернуть алгоритм дайджеста для OID алгоритма открытого ключа."""
     if key_oid in GOST_KEY_OIDS:
         return (
             DIGEST_STREEBOG_256
@@ -36,4 +36,4 @@ def algorithm_for_key_oid(key_oid: str) -> str:
         )
     if key_oid in {RSA_KEY_OID, EC_KEY_OID}:
         return DIGEST_SHA256
-    raise ValueError(f"Unsupported public key algorithm: {key_oid}")
+    raise ValueError(f"Неподдерживаемый алгоритм открытого ключа: {key_oid}")

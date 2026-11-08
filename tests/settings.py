@@ -1,4 +1,4 @@
-"""Django settings used by the test suite."""
+"""Настройки Django для тестов."""
 
 from __future__ import annotations
 

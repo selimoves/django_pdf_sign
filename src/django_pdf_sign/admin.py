@@ -1,4 +1,4 @@
-"""Read-only admin for signing sessions and signature records."""
+"""Админка только для чтения сессий и записей подписи."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from django_pdf_sign.models import SignatureRecord, SigningSession
 
 
 class ReadOnlyAdmin(admin.ModelAdmin):
-    """Admin that exposes records without allowing changes."""
+    """Админка, показывающая записи без возможности изменения."""
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
@@ -23,7 +23,7 @@ class ReadOnlyAdmin(admin.ModelAdmin):
 
 @admin.register(SigningSession)
 class SigningSessionAdmin(ReadOnlyAdmin):
-    """Read-only view of signing sessions."""
+    """Просмотр сессий подписи только для чтения."""
 
     list_display = (
         "id",
@@ -46,16 +46,26 @@ class SigningSessionAdmin(ReadOnlyAdmin):
 
 @admin.register(SignatureRecord)
 class SignatureRecordAdmin(ReadOnlyAdmin):
-    """Read-only view of completed signatures."""
+    """Просмотр завершённых подписей только для чтения."""
 
     list_display = (
         "id",
         "certificate_common_name",
         "digest_algorithm",
         "verification_status",
+        "chain_status",
+        "revocation_status",
+        "timestamp_status",
         "signed_at",
     )
-    list_filter = ("verification_status", "digest_algorithm", "subfilter")
+    list_filter = (
+        "verification_status",
+        "chain_status",
+        "revocation_status",
+        "timestamp_status",
+        "digest_algorithm",
+        "subfilter",
+    )
     search_fields = (
         "certificate_subject",
         "certificate_common_name",

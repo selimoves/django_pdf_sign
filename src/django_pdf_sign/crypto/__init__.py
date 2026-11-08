@@ -1,1 +1,1 @@
-"""Cryptographic helpers for PDF signatures."""
+"""Криптографические примитивы для подписей PDF."""

@@ -34,8 +34,8 @@ def test_protocol_documents_digest_names() -> None:
 
 def test_legal_states_no_private_keys() -> None:
     text = _read("legal.md").lower()
-    assert "private key" in text
-    assert "qualified certificate" in text
+    assert "закрытый ключ" in text
+    assert "квалифицированный сертификат" in text
 
 
 def test_stamp_documents_default_template() -> None:

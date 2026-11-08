@@ -1,51 +1,53 @@
-# Test fixtures
+# Тестовые фикстуры
 
-## Generated fixtures
+## Генерируемые фикстуры
 
-Most tests build their own material in `tests/helpers.py`:
+Большинство тестов создают материал сами в `tests/helpers.py`:
 
-- `make_rsa_certificate()` — a self-signed RSA-2048 certificate and key.
-- `make_gost_certificate(key_size=256|512, curve_oid=...)` — a self-signed
-  GOST 34.10-2012 certificate and private key, built with `asn1crypto` and
-  signed with `gostcrypto`.
-- `make_rsa_cms()` / `make_gost_cms()` — detached CAdES-BES containers over
-  arbitrary bytes.
-- `minimal_pdf(pages=1)` — a valid, minimal PDF.
+- `make_rsa_certificate()` — самоподписанный сертификат RSA-2048 и ключ.
+- `make_gost_certificate(key_size=256|512, curve_oid=...)` — самоподписанный
+  сертификат ГОСТ Р 34.10-2012 и закрытый ключ. Кодировка открытого ключа и
+  подписи соответствует КриптоПро (RFC 4491): точка `X ‖ Y` в little-endian,
+  подпись `s ‖ r`, дайджест little-endian.
+- `make_gost_crl(...)` — список отзыва, подписанный ключом издателя.
+- `make_gost_ocsp(...)` — ответ OCSP с ГОСТ- или SHA-идентификатором
+  сертификата.
+- `make_gost_timestamp(...)` — метка времени CAdES-T над значением подписи.
+- `make_rsa_cms()` / `make_gost_cms()` — отсоединённые контейнеры CAdES-BES
+  над произвольными байтами.
+- `minimal_pdf(pages=1)` — минимальный корректный PDF.
 
-They are deterministic in shape, random in key material, and regenerated on
-every test run. No private key is ever committed.
+Материал генерируется при каждом прогоне; закрытые ключи не коммитятся.
 
-## CryptoPro official fixtures
+## Официальные фикстуры КриптоПро
 
-`tests/fixtures/crypto/` contains the official CryptoPro test material from
+В `tests/fixtures/crypto/` лежат официальные тестовые материалы КриптоПро из
 `https://github.com/CryptoPro/pycades/tree/main/tests/fixtures`:
 
-- `pycades-root.cer` — root CA certificate for GOST R 34.10-2012 test signing;
-- `pycades-root.crl` — the matching revocation list.
+- `pycades-root.cer` — корневой сертификат ГОСТ Р 34.10-2012;
+- `pycades-root.crl` — соответствующий список отзыва.
 
-They are used only to prove that the parser handles a real CryptoPro-issued
-certificate: a `SEQUENCE` of curve parameters and a public key point encoded
-without the `0x04` prefix. They are **not** trust anchors and must never be
-trusted in production.
+Они нужны, чтобы проверить разбор реального сертификата КриптоПро: параметры
+кривой в виде SEQUENCE из двух OID и открытый ключ без префикса `0x04`. Это
+**не** доверенные корни, и в продакшене им доверять нельзя.
 
-Copyright (c) 2026, CryptoPro LLC. Distributed under the BSD 3-Clause license
-of the pycades repository.
+Copyright (c) 2026, ООО «КриптоПро». Распространяется по лицензии BSD 3-Clause
+репозитория pycades.
 
-The upstream repository also ships `pycades-test.pfx`, a password-protected
-container with a private key. It is deliberately **not** vendored here. If you
-need a real CryptoPro CMS for an interoperability test, generate one locally:
+В том же репозитории есть `pycades-test.pfx` — контейнер с закрытым ключом под
+паролем. Он намеренно **не** включён в репозиторий. Если нужна реальная CMS
+КриптоПро для интероп-теста, сгенерируйте её локально:
 
-1. run a container with CryptoPro CSP (the `php-pdf-cryptopro` repository has a
-   working Docker recipe);
-2. install `pycades-test.pfx` with `certmgr -install -pfx`;
-3. sign a PDF with `pycades` or `cryptcp`;
-4. commit only the resulting **signed PDF**, never the container or the key.
+1. поднимите контейнер с КриптоПро CSP (рецепт в `docker/cryptopro`);
+2. установите `pycades-test.pfx` командой `certmgr -install -pfx`;
+3. подпишите PDF через `pycades` или `cryptcp`;
+4. закоммитьте только подписанный PDF, никогда — контейнер или ключ.
 
-Such an integration test must be guarded by an environment variable and skipped
-in CI, because CI has no CryptoPro CSP.
+Такой интероп-тест запускается только по переменной окружения и пропускается
+в CI, где нет КриптоПро.
 
-## Regenerating
+## Перегенерация
 
-Generated fixtures need no regeneration. Official fixtures are copied verbatim
-from the upstream repository; update them by replacing the two files and
-re-running `uv run pytest tests/test_fixtures.py`.
+Генерируемые фикстуры перегенерировать не нужно. Официальные фикстуры
+копируются из upstream без изменений: замените два файла и запустите
+`uv run pytest tests/test_fixtures.py`.

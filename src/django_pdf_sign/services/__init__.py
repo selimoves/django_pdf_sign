@@ -1,4 +1,4 @@
-"""Public services of django-pdf-sign."""
+"""Публичные сервисы django-pdf-sign."""
 
 from __future__ import annotations
 

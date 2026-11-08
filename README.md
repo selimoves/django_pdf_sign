@@ -1,28 +1,28 @@
 # django-pdf-sign
 
-Client-side electronic signatures for PDF documents in Django.
+Клиентские электронные подписи PDF-документов в Django.
 
-The server never holds private keys. It prepares a PDF with a visible stamp,
-hands the exact bytes to sign to the browser (CryptoPro Browser Plug-in),
-verifies the returned detached CMS, and embeds it.
+Сервер никогда не хранит закрытые ключи. Он подготавливает PDF с видимым
+штампом, передаёт браузеру точные байты для подписи (плагин КриптоПро),
+проверяет присланную отсоединённую CMS и встраивает её в документ.
 
-- **GOST 34.10-2012 / CAdES-BES** — Russian qualified signatures
-  (Streebog-256/512), verifiable in Russian validators when the signer holds a
-  qualified certificate.
-- **PAdES / RSA-ECDSA** — Adobe-compatible signatures.
+- **ГОСТ Р 34.10-2012 / CAdES-BES** — квалифицированные подписи
+  (Стрибог-256/512), проверяемые российскими валидаторами при наличии
+  квалифицированного сертификата.
+- **PAdES / RSA-ECDSA** — подписи, совместимые с Adobe.
 
-> Status: early development. The public API is not stable yet.
+> Статус: ранняя разработка. Публичный API пока не стабилен.
 
-## Install
+## Установка
 
 ```bash
 pip install django-pdf-sign
 ```
 
-The server needs no CryptoPro installation: verification is done with
-`gostcrypto` and `cryptography`.
+Серверу не нужен КриптоПро: проверка выполняется библиотеками `gostcrypto`
+и `cryptography`.
 
-## Quick start
+## Быстрый старт
 
 ```python
 # settings.py
@@ -36,16 +36,16 @@ INSTALLED_APPS = [
 ```python
 from django_pdf_sign.services import prepare_signing, complete_signing
 
-# Step 1: the browser sends its certificate; prepare the document.
+# Шаг 1: браузер присылает сертификат, сервер готовит документ.
 prepared = prepare_signing(
     document=invoice,
     user=request.user,
-    certificate_der=certificate_der,   # DER bytes from the browser
-    page=-1,                            # last page
-    box=(57, 57, 284, 170),             # 80x40 mm, 20 mm margins
+    certificate_der=certificate_der,  # DER-сертификат из браузера
+    page=-1,                           # последняя страница
+    box=(57, 57, 284, 170),            # 80x40 мм, отступы 20 мм
 )
 
-# Step 2: send to the browser.
+# Шаг 2: отдать браузеру.
 response = {
     "session_id": str(prepared.session.pk),
     "bytes_to_sign": base64.b64encode(prepared.bytes_to_sign).decode(),
@@ -53,34 +53,36 @@ response = {
     "expires_at": prepared.expires_at.isoformat(),
 }
 
-# Step 3: the browser returns a detached CMS; verify and embed it.
+# Шаг 3: браузер вернул отсоединённую CMS — проверить и встроить.
 result = complete_signing(
     session_id=prepared.session.pk,
     cms=cms_bytes,
     user=request.user,
 )
-result.signed_pdf      # bytes of the signed PDF
-result.record          # immutable SignatureRecord
+result.signed_pdf      # байты подписанного PDF
+result.record          # неизменяемая запись аудита
 ```
 
-## What it does
+## Что делает пакет
 
-- Adds a signature field and a Russian-style stamp to the PDF.
-- Returns the exact `/ByteRange` bytes to sign.
-- Verifies that the CMS covers those bytes, that the certificate matches the
-  session and that the signature is cryptographically valid.
-- Embeds the CMS, stores the signed PDF and writes an audit record.
-- Expires abandoned sessions (`python manage.py pdf_sign_cleanup`).
+- Добавляет поле подписи и штамп в российском стиле.
+- Возвращает точные байты `/ByteRange` для подписи.
+- Проверяет, что CMS покрывает именно эти байты, сертификат совпадает с
+  сессией, а подпись криптографически верна.
+- Встраивает CMS, сохраняет подписанный PDF и пишет запись аудита.
+- Проверяет цепочку сертификатов, отзыв (CRL и OCSP) и метки времени
+  CAdES-T, если задана политика.
+- Помечает и удаляет брошенные сессии (`python manage.py pdf_sign_cleanup`).
 
-## What it does not do
+## Чего пакет не делает
 
-- Hold, receive or log private keys, PINs or key containers.
-- Validate trust chains, OCSP/CRL or timestamps in version 1.
-- Provide views or DRF endpoints; your application owns URLs and permissions.
-- Make a signature legally valid. That requires a qualified certificate and a
-  certified cryptographic provider on the signer's side.
+- Не хранит, не принимает и не журналирует закрытые ключи, PIN и контейнеры.
+- Не является удостоверяющим центром и не выдаёт сертификаты.
+- Не заменяет сертифицированное СКЗИ на стороне подписанта.
+- Не даёт юридическую силу сам по себе: нужны квалифицированный сертификат и
+  сертифицированное СКЗИ. Подробности в [docs/legal.md](docs/legal.md).
 
-## Settings
+## Настройки
 
 ```python
 DJANGO_PDF_SIGN = {
@@ -97,26 +99,40 @@ DJANGO_PDF_SIGN = {
         "BORDER_WIDTH": 1,
         "BACKGROUND_PATH": None,
     },
+    "VERIFY": {
+        "CHECK_CHAIN": False,
+        "TRUST_ROOTS": (),
+        "INTERMEDIATE_CERTS": (),
+        "CRLS": (),
+        "OCSPS": (),
+        "REVOCATION_MODE": "soft-fail",  # none | soft-fail | require
+        "ALLOW_FETCHING": False,
+        "CHECK_TIMESTAMPS": False,
+        "REQUIRE_TIMESTAMP": False,
+    },
     "PREPARED_UPLOAD_TO": "django_pdf_sign/prepared/%Y/%m/%d",
     "SIGNED_UPLOAD_TO": "django_pdf_sign/signed/%Y/%m/%d",
 }
 ```
 
-## Documentation
+Пути к корневым сертификатам, CRL и ответам OCSP — строки, файлы читаются при
+создании политики.
 
-- [Protocol](docs/protocol.md) — server/client contract and browser example.
-- [Stamp](docs/stamp.md) — default template, placement, configuration.
-- [Legal validity](docs/legal.md) — what makes a signature valid, and what this
-  package does not do.
-- [Fixtures](docs/fixtures.md) — test certificate provenance.
+## Документация
 
-## Requirements
+- [Протокол](docs/protocol.md) — контракт сервер/клиент и пример на JS.
+- [Штамп](docs/stamp.md) — шаблон, размещение, настройка.
+- [Юридическая сила](docs/legal.md) — что делает подпись действительной.
+- [Фикстуры](docs/fixtures.md) — происхождение тестовых сертификатов.
+- [Интероп с КриптоПро](docker/cryptopro/README.md) — проверка на реальном CSP.
+
+## Требования
 
 - Python 3.11+
 - Django 4.2+
 - `pyhanko[opentype]`, `asn1crypto`, `cryptography`, `gostcrypto`
 
-## Development
+## Разработка
 
 ```bash
 uv sync --all-extras
@@ -127,7 +143,7 @@ uv run python -m mypy
 uv build
 ```
 
-## License
+## Лицензия
 
-MIT. The bundled DejaVu Sans font is distributed under the Bitstream Vera
-license; see `src/django_pdf_sign/fonts/LICENSE.DejaVu`.
+MIT. Встроенный шрифт DejaVu Sans распространяется по лицензии Bitstream Vera;
+см. `src/django_pdf_sign/fonts/LICENSE.DejaVu`.

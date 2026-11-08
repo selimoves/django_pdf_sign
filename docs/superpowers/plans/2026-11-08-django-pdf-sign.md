@@ -48,6 +48,10 @@ Each task appends its verification result here after the final step.
 | 3 | `uv run pytest tests/test_digest.py -q` | `9 passed` |
 | 3 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 3 | `uv run python -m mypy` | `Success: no issues found in 8 source files` |
+| 4 | `uv run pytest tests/test_certs.py -q` | `6 passed` (RSA, GOST-256, GOST-512, display name, garbage) |
+| 4 | `uv run pytest -q` | `21 passed` |
+| 4 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 4 | `uv run python -m mypy` | `Success: no issues found in 9 source files` |
 
 ---
 
@@ -269,7 +273,7 @@ git commit -m "feat: add GOST and SHA-2 digest primitives"
   - `display_name(info: CertificateInfo) -> str` (organization + common name).
   - Test helper `tests.helpers.make_rsa_certificate()` and `tests.helpers.make_gost_certificate()` returning `(CertificateInfo, private_key_material)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_certs.py`:
 
@@ -309,21 +313,21 @@ def test_garbage_raises():
         parse_certificate(b"not a certificate")
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/test_certs.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement certificate parsing and test helpers**
+- [x] **Step 3: Implement certificate parsing and test helpers**
 
 GOST SPKI parsing uses a local `keys.PublicKeyInfo` subclass whose `_spec_callbacks` maps `public_key` to `(core.OctetBitString, None)`, then strips the leading `0x04` point prefix. Certificate signature verification is out of scope here; only parsing.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `uv run pytest tests/test_certs.py -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/django_pdf_sign/crypto/certs.py tests/helpers.py tests/test_certs.py

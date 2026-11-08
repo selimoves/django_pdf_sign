@@ -156,5 +156,10 @@ exclude = ["migrations/"]
 django_settings_module = "tests.settings"
 
 [[tool.mypy.overrides]]
-module = ["gostcrypto.*"]
+module = ["gostcrypto.*", "asn1crypto.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["django_pdf_sign.crypto.certs"]
+disallow_subclassing_any = false
+warn_return_any = false

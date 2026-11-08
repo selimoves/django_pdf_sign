@@ -39,7 +39,7 @@ jobs:
         with:
           python-version: "3.13"
 
-      - run: uv sync
+      - run: uv sync --all-extras
       - run: uv run cyclonedx-py environment -o sbom.json --pyproject pyproject.toml
       - uses: actions/upload-artifact@v4
         with:

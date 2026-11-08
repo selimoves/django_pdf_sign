@@ -1,0 +1,43 @@
+name: Ошибка
+description: Сообщить о воспроизводимой проблеме
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Не прикладывайте закрытые ключи, PIN, реальные CMS и персональные данные.
+        Уязвимости — через GitHub Security Advisories, см. SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Версия django-pdf-sign
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python и Django
+      placeholder: "3.13 / 6.1"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      placeholder: "1. ...\n2. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемое поведение
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактическое поведение и traceback
+      render: text
+    validations:
+      required: true

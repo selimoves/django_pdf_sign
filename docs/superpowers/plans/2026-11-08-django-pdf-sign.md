@@ -52,6 +52,10 @@ Each task appends its verification result here after the final step.
 | 4 | `uv run pytest -q` | `21 passed` |
 | 4 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 4 | `uv run python -m mypy` | `Success: no issues found in 9 source files` |
+| 5 | `uv run pytest tests/test_gost.py -q` | `5 passed` (256/512 valid, tampered, unknown curve, malformed key) |
+| 5 | `uv run pytest -q` | `26 passed` |
+| 5 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 5 | `uv run python -m mypy` | `Success: no issues found in 10 source files` |
 
 ---
 
@@ -348,7 +352,7 @@ git commit -m "feat: parse X.509 certificates including GOST SPKI"
   - `verify_gost(*, public_key: bytes, curve_oid: str, digest: bytes, signature: bytes, key_size: int) -> bool`.
   - Raises `VerificationError` for an unknown curve OID or a malformed key/signature.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_gost.py`:
 
@@ -401,21 +405,21 @@ def test_unknown_curve_raises():
         )
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/test_gost.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement `verify_gost`**
+- [x] **Step 3: Implement `verify_gost`**
 
 Map `curve_oid` through `GOST_CURVE_OIDS` to a `CURVES_R_1323565_1_024_2019` key, select `MODE_256`/`MODE_512` from `key_size`, call `.verify(bytearray(public_key), bytearray(digest), bytearray(signature))`. Any library exception becomes `False`, except an unknown curve which raises `VerificationError`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `uv run pytest tests/test_gost.py -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/django_pdf_sign/crypto/gost.py tests/test_gost.py

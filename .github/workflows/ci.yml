@@ -19,22 +19,24 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         include:
           - python: "3.11"
-            django: "4.2"
-          - python: "3.11"
             django: "5.2"
           - python: "3.12"
-            django: "4.2"
-          - python: "3.12"
             django: "5.2"
+          - python: "3.12"
+            django: "6.0"
           - python: "3.12"
             django: "6.1"
           - python: "3.13"
             django: "5.2"
+          - python: "3.13"
+            django: "6.0"
           - python: "3.13"
             django: "6.1"
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: astral-sh/setup-uv@v5
         with:
@@ -45,6 +47,9 @@ jobs:
         run: |
           uv sync --all-extras
           uv pip install "django~=${{ matrix.django }}.0"
+
+      - name: Migrations check
+        run: uv run python -m django makemigrations --check --dry-run --settings=tests.settings
 
       - name: Lint
         run: uv run ruff check .
@@ -64,6 +69,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: astral-sh/setup-uv@v5
         with:

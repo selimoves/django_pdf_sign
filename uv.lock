@@ -828,7 +828,7 @@ requires-dist = [
     { name = "asn1crypto", specifier = ">=1.5.1" },
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.2" },
     { name = "cryptography", specifier = ">=48" },
-    { name = "django", specifier = ">=4.2" },
+    { name = "django", specifier = ">=5.2" },
     { name = "django-stubs", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "gostcrypto", specifier = ">=1.2.5" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.11" },

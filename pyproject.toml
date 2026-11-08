@@ -25,11 +25,11 @@ keywords = [
   "qualified-signature",
 ]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Environment :: Web Environment",
   "Framework :: Django",
-  "Framework :: Django :: 4.2",
   "Framework :: Django :: 5.2",
+  "Framework :: Django :: 6.0",
   "Framework :: Django :: 6.1",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
@@ -43,7 +43,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "django>=4.2",
+  "django>=5.2",
   "pyhanko[opentype]>=0.38,<0.39",
   "asn1crypto>=1.5.1",
   "cryptography>=48",

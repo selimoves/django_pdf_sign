@@ -16,7 +16,7 @@ jobs:
       matrix:
         target: [fuzz_cms, fuzz_cert, fuzz_ocsp, fuzz_timestamp]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

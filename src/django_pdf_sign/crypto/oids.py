@@ -31,6 +31,12 @@ GOST_CURVE_OIDS: dict[str, str] = {
     "1.2.643.7.1.2.1.2.1": "id-tc26-gost-3410-12-512-paramSetA",
     "1.2.643.7.1.2.1.2.2": "id-tc26-gost-3410-12-512-paramSetB",
     "1.2.643.7.1.2.1.2.3": "id-tc26-gost-3410-2012-512-paramSetC",
+    # CryptoPro encodes the shared 2001 curves in 2012 certificates.
+    "1.2.643.2.2.35.1": "id-tc26-gost-3410-2012-256-paramSetA",
+    "1.2.643.2.2.35.2": "id-tc26-gost-3410-2012-256-paramSetB",
+    "1.2.643.2.2.35.3": "id-tc26-gost-3410-2012-256-paramSetC",
+    "1.2.643.2.2.36.0": "id-tc26-gost-3410-2012-256-paramSetA",
+    "1.2.643.2.2.36.1": "id-tc26-gost-3410-2012-256-paramSetB",
 }
 
 RSA_KEY_OID = "1.2.840.113549.1.1.1"

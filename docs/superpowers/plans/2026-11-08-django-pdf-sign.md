@@ -96,6 +96,13 @@ Each task appends its verification result here after the final step.
 | 14 | `uv run pytest -q` | `87 passed` |
 | 14 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 14 | `uv run python -m mypy` | `Success: no issues found in 24 source files` |
+| 15 | Real CryptoPro cert (`pycades-root.cer`) | Required two compatibility fixes: legacy curve OID `1.2.643.2.2.36.0` and a public key point encoded as `OCTET STRING(X‖Y)` without `0x04` |
+| 15 | `uv run pytest -q` | `94 passed` |
+| 15 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 15 | `uv run python -m mypy` | `Success: no issues found in 24 source files` |
+| 15 | `uv build` | sdist + wheel built |
+| 15 | `uv run twine check dist/*` | both `PASSED` |
+| 15 | Clean venv install | `import django_pdf_sign` OK, bundled font and `py.typed` present |
 
 ---
 
@@ -1183,7 +1190,7 @@ git commit -m "feat: add expired session cleanup command"
 - Consumes: everything.
 - Produces: a package that builds with `uv build`, passes `twine check`, and documents the protocol, legal limits, fixtures and stamp.
 
-- [ ] **Step 1: Write the failing documentation test**
+- [x] **Step 1: Write the failing documentation test**
 
 `tests/test_docs.py`:
 
@@ -1206,12 +1213,12 @@ def test_legal_states_no_private_keys():
     assert "private key" in text.lower()
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `uv run pytest tests/test_docs.py -q`
 Expected: FAIL with `FileNotFoundError`.
 
-- [ ] **Step 3: Write the documentation**
+- [x] **Step 3: Write the documentation**
 
 - `docs/protocol.md`: the three-step HTTP contract, request/response JSON, error codes, digest algorithm names, subfilter values, expiry.
 - `docs/legal.md`: what the package does and does not guarantee; qualified certificate and certified СКЗИ are required; server never sees private keys.
@@ -1219,11 +1226,11 @@ Expected: FAIL with `FileNotFoundError`.
 - `docs/stamp.md`: default template, placement, rationale (ГОСТ Р 7.0.97-2016, EDI operator practice), configuration.
 - `README.md`: install, quick start, settings, links.
 
-- [ ] **Step 4: Add CI**
+- [x] **Step 4: Add CI**
 
 `.github/workflows/ci.yml`: matrix Python 3.11/3.12/3.13 × Django 4.2/5.2/6.1 (skip incompatible pairs), `uv sync`, `ruff check`, `ruff format --check`, `mypy`, `pytest`, on `ubuntu-latest` and `windows-latest`.
 
-- [ ] **Step 5: Run the full suite and build**
+- [x] **Step 5: Run the full suite and build**
 
 Run: `uv run pytest -q`
 Expected: PASS.
@@ -1234,7 +1241,7 @@ Expected: clean.
 Run: `uv build && uv run twine check dist/*`
 Expected: both artifacts build and pass `twine check`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs README.md .github tests/test_docs.py
@@ -1245,11 +1252,11 @@ git commit -m "docs: document protocol, legal limits, fixtures and stamp"
 
 ## Final verification
 
-- [ ] `uv run pytest -q` — all tests pass.
-- [ ] `uv run ruff check .` — clean.
-- [ ] `uv run ruff format --check .` — clean.
-- [ ] `uv run python -m mypy` — clean.
-- [ ] `uv build` — sdist and wheel built.
-- [ ] `uv run twine check dist/*` — both pass.
-- [ ] Install the wheel into a clean venv and import `django_pdf_sign`.
-- [ ] Record every task's result in the Verification Log above.
+- [x] `uv run pytest -q` — all tests pass.
+- [x] `uv run ruff check .` — clean.
+- [x] `uv run ruff format --check .` — clean.
+- [x] `uv run python -m mypy` — clean.
+- [x] `uv build` — sdist and wheel built.
+- [x] `uv run twine check dist/*` — both pass.
+- [x] Install the wheel into a clean venv and import `django_pdf_sign`.
+- [x] Record every task's result in the Verification Log above.

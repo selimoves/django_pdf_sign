@@ -72,17 +72,14 @@ Source = "https://github.com/selimoves/django-pdf-sign"
 [tool.hatch.build.targets.wheel]
 packages = ["src/django_pdf_sign"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"src/django_pdf_sign/fonts" = "django_pdf_sign/fonts"
-
 [tool.hatch.build.targets.sdist]
 include = [
-  "/src",
-  "/tests",
-  "/docs",
-  "/README.md",
-  "/LICENSE",
-  "/pyproject.toml",
+  "src",
+  "tests",
+  "docs",
+  "README.md",
+  "LICENSE",
+  "pyproject.toml",
 ]
 
 [tool.uv]
@@ -117,7 +114,7 @@ exclude_lines = [
 line-length = 88
 target-version = "py311"
 src = ["src", "tests"]
-extend-exclude = ["docs", "src/django_pdf_sign/migrations"]
+extend-exclude = ["docs", "README.md", "src/django_pdf_sign/migrations"]
 
 [tool.ruff.lint]
 select = [

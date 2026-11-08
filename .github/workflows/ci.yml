@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --all-extras
-          uv pip install "django~=${{ matrix.django }}.0"
+          uv pip install "django~=${{ matrix.django }}.0" "django-stubs~=${{ matrix.django }}.0"
 
       - name: Lint
         run: uv run ruff check .

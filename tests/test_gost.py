@@ -79,6 +79,22 @@ def test_valid_512_signature() -> None:
     )
 
 
+def test_legacy_curve_oid_is_accepted() -> None:
+    private, public = _keypair()
+    digest = digest_for("streebog256", b"payload")
+    curve = CURVES["id-tc26-gost-3410-2012-256-paramSetA"]
+    signature = bytes(
+        gostsignature.new(MODE_256, curve).sign(bytearray(private), digest)
+    )
+    assert verify_gost(
+        public_key=public,
+        curve_oid="1.2.643.2.2.36.0",
+        digest=digest,
+        signature=signature,
+        key_size=256,
+    )
+
+
 def test_unknown_curve_raises() -> None:
     with pytest.raises(VerificationError):
         verify_gost(

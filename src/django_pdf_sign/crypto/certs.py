@@ -64,7 +64,7 @@ def gost_public_key_from_spki(spki: keys.PublicKeyInfo, key_size: int) -> bytes:
     if len(raw) == point_size + 1 and raw[0] == 0x04:
         raw = raw[1:]
     if len(raw) != point_size:
-        raise CertificateError("???????????? ????? ????????? ?????")
+        raise CertificateError("Некорректная длина открытого ключа")
     return raw
 
 
@@ -97,7 +97,7 @@ def _key_size(der: bytes, key_oid: str) -> int:
     if isinstance(public_key, ec.EllipticCurvePublicKey):
         return public_key.curve.key_size
     raise CertificateError(
-        f"???????????????? ??? ????????? ?????: {type(public_key).__name__}"
+        f"Неподдерживаемый тип открытого ключа: {type(public_key).__name__}"
     )
 
 
@@ -120,7 +120,7 @@ def _parse_certificate(der: bytes) -> CertificateInfo:
     signature_oid = cert["signature_algorithm"]["algorithm"].dotted
 
     if key_oid not in GOST_KEY_OIDS and key_oid not in {RSA_KEY_OID, EC_KEY_OID}:
-        raise CertificateError(f"???????????????? ???????? ????????? ?????: {key_oid}")
+        raise CertificateError(f"Неподдерживаемый алгоритм открытого ключа: {key_oid}")
 
     is_gost = key_oid in GOST_KEY_OIDS
     key_size = _key_size(der, key_oid)
@@ -152,7 +152,7 @@ def _parse_certificate(der: bytes) -> CertificateInfo:
 
 
 def display_name(info: CertificateInfo) -> str:
-    """??? ??????????? ??? ????????? ??? ??????????? ???????."""
+    """Имя организации или владельца для отображения подписи."""
     if info.organization and info.common_name:
         return f"{info.organization}, {info.common_name}"
     return info.common_name or info.organization or info.subject

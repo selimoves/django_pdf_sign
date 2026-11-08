@@ -17,7 +17,7 @@ from pyhanko_certvalidator.errors import CertificateFetchError, OCSPFetchError
 from django_pdf_sign import events as events_module
 from django_pdf_sign.checks import check_settings
 from django_pdf_sign.conf import get_setting, get_stamp_setting
-from django_pdf_sign.constants import TimestampStatus
+from django_pdf_sign.constants import SigningStatus, TimestampStatus
 from django_pdf_sign.crypto.certs import (
     curve_oid_from_parameters,
     gost_public_key_from_spki,
@@ -313,7 +313,7 @@ def test_complete_requires_timestamp_when_configured() -> None:
 
 
 @pytest.mark.django_db
-def test_complete_rejects_timestamp_outside_certificate_validity() -> None:
+def test_complete_ignores_timestamp_for_certificate_validity() -> None:
     signer, signer_key = make_gost_certificate(common_name="Signer")
     tsa, tsa_key = make_gost_certificate(common_name="TSA")
     prepared = prepare_signing(document=_document(), certificate_der=signer.der)
@@ -328,11 +328,11 @@ def test_complete_rejects_timestamp_outside_certificate_validity() -> None:
         tsa_private_key=tsa_key,
         gen_time=datetime.datetime(2040, 1, 1, tzinfo=datetime.UTC),
     )
-    with pytest.raises(VerificationError):
-        complete_signing(
-            session_id=prepared.session.pk,
-            cms=add_cms_timestamp(cms_bytes, token),
-        )
+    result = complete_signing(
+        session_id=prepared.session.pk,
+        cms=add_cms_timestamp(cms_bytes, token),
+    )
+    assert result.session.status == SigningStatus.COMPLETED
 
 
 @pytest.mark.django_db

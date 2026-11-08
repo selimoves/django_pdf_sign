@@ -67,7 +67,7 @@ def test_encrypted_pdf_rejected() -> None:
 def test_pdf_with_incremental_update_signs() -> None:
     first_signed = _sign(minimal_pdf())
     second_signed = _sign(first_signed)
-    result = verify_signed_pdf(second_signed)
+    result = verify_signed_pdf(second_signed, signature_index=1)
     assert result.valid
 
 

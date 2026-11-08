@@ -218,7 +218,7 @@ def test_complete_with_trusted_chain() -> None:
     assert result.record.verification_status == VerificationStatus.VALID
     assert result.record.verification_details["chain_ok"] is True
     assert result.record.chain_status == "valid"
-    assert result.record.revocation_status == "good"
+    assert result.record.revocation_status == "not_checked"
     assert result.record.trusted is True
 
 

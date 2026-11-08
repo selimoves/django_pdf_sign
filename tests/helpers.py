@@ -652,6 +652,89 @@ def make_gost_timestamp(
     ).dump()
 
 
+def make_rsa_timestamp(
+    *,
+    signature_value: bytes,
+    tsa_cert_der: bytes,
+    tsa_private_key: object,
+    gen_time: datetime.datetime | None = None,
+) -> bytes:
+    """Собрать RSA-метку времени CAdES-T для указанной подписи."""
+    tsa = x509.Certificate.load(tsa_cert_der)
+    hash_oid = "2.16.840.1.101.3.4.2.1"
+    gen_time = gen_time or datetime.datetime(2026, 6, 1, tzinfo=datetime.UTC)
+
+    tst_info = tsp.TSTInfo(
+        {
+            "version": "v1",
+            "policy": "1.2.3.4.1",
+            "message_imprint": tsp.MessageImprint(
+                {
+                    "hash_algorithm": algos.DigestAlgorithm({"algorithm": hash_oid}),
+                    "hashed_message": hashlib.sha256(signature_value).digest(),
+                }
+            ),
+            "serial_number": int.from_bytes(os.urandom(4), "big"),
+            "gen_time": core.GeneralizedTime(gen_time),
+        }
+    )
+    attributes = cms.CMSAttributes(
+        [
+            cms.CMSAttribute({"type": "content_type", "values": [TST_INFO_OID]}),
+            cms.CMSAttribute(
+                {
+                    "type": "message_digest",
+                    "values": [hashlib.sha256(tst_info.dump()).digest()],
+                }
+            ),
+            cms.CMSAttribute(
+                {
+                    "type": "signing_time",
+                    "values": [cms.Time({"utc_time": core.UTCTime(gen_time)})],
+                }
+            ),
+        ]
+    )
+    signature = tsa_private_key.sign(
+        attributes.dump(), padding.PKCS1v15(), hashes.SHA256()
+    )
+    signer_info = cms.SignerInfo(
+        {
+            "version": "v1",
+            "sid": cms.SignerIdentifier(
+                {
+                    "issuer_and_serial_number": cms.IssuerAndSerialNumber(
+                        {
+                            "issuer": tsa.issuer,
+                            "serial_number": tsa.serial_number,
+                        }
+                    )
+                }
+            ),
+            "digest_algorithm": algos.DigestAlgorithm({"algorithm": hash_oid}),
+            "signed_attrs": attributes,
+            "signature_algorithm": algos.SignedDigestAlgorithm(
+                {"algorithm": "1.2.840.113549.1.1.11"}
+            ),
+            "signature": signature,
+        }
+    )
+    signed_data = cms.SignedData(
+        {
+            "version": "v3",
+            "digest_algorithms": [algos.DigestAlgorithm({"algorithm": hash_oid})],
+            "encap_content_info": cms.EncapsulatedContentInfo(
+                {"content_type": TST_INFO_OID, "content": tst_info}
+            ),
+            "certificates": [tsa],
+            "signer_infos": [signer_info],
+        }
+    )
+    return cms.ContentInfo(
+        {"content_type": "signed_data", "content": signed_data}
+    ).dump()
+
+
 def add_cms_timestamp(cms_der: bytes, token_der: bytes) -> bytes:
     """Добавить метку времени в unsigned-атрибуты подписи CMS."""
     content_info = cms.ContentInfo.load(cms_der)

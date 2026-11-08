@@ -4,7 +4,9 @@ import pytest
 from django.core.files.base import ContentFile
 from django.db import connection, connections
 
+from django_pdf_sign.constants import SigningStatus
 from django_pdf_sign.exceptions import SessionError
+from django_pdf_sign.models import SignatureRecord, SigningSession
 from django_pdf_sign.services import complete_signing, prepare_signing
 from tests.helpers import make_rsa_certificate, make_rsa_cms, minimal_pdf
 from tests.models import Document
@@ -41,3 +43,6 @@ def test_concurrent_complete_embeds_once():
         thread.join()
 
     assert sorted(outcomes) == ["ok", "rejected"]
+    assert SignatureRecord.objects.count() == 1
+    session = SigningSession.objects.get(pk=prepared.session.pk)
+    assert session.status == SigningStatus.COMPLETED

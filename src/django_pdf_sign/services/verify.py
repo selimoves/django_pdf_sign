@@ -188,5 +188,7 @@ def verify_signed_pdf(
         return _invalid("Некорректный ByteRange")
 
     start, length, offset, tail = byte_range
+    if start != 0 or offset + tail != len(pdf):
+        return _invalid("Подпись не покрывает весь файл")
     data = pdf[start : start + length] + pdf[offset : offset + tail]
     return verify_cms_over_bytes(cms=contents, data=data, policy=policy)

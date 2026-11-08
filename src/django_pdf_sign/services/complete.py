@@ -8,7 +8,7 @@ from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from django_pdf_sign.constants import (
@@ -26,7 +26,7 @@ from django_pdf_sign.crypto.policy import VerificationPolicy
 from django_pdf_sign.crypto.timestamp import verify_timestamp_token
 from django_pdf_sign.crypto.validation import validate_chain
 from django_pdf_sign.events import emit
-from django_pdf_sign.exceptions import SessionError, VerificationError
+from django_pdf_sign.exceptions import SessionError, SigningError, VerificationError
 from django_pdf_sign.models import SignatureRecord, SigningSession
 from django_pdf_sign.pdf.embedder import embed_cms
 
@@ -118,12 +118,15 @@ def _verify(
         "chain_ok": None,
         "trusted": None,
         "revoked": False,
+        "revocation_checked": bool(
+            policy.crls or policy.ocsps or policy.allow_fetching
+        ),
         "validation_path": [],
         "timestamp_ok": None,
         "signing_time": None,
     }
 
-    validation_moment = timezone.now()
+    validation_moment = policy.moment or timezone.now()
     if parsed.timestamp_token is not None:
         timestamp = verify_timestamp_token(
             parsed.timestamp_token, signature_value=parsed.signature
@@ -132,9 +135,9 @@ def _verify(
         details["signing_time"] = (
             timestamp.gen_time.isoformat() if timestamp.gen_time else None
         )
-        if timestamp.gen_time is not None and timestamp.valid:
-            validation_moment = timestamp.gen_time
-        if policy.check_timestamps and not timestamp.valid:
+        if (policy.check_timestamps or policy.require_timestamp) and not (
+            timestamp.valid
+        ):
             reason = "; ".join(timestamp.errors) or "метка времени неверна"
             raise VerificationError(f"Проверка метки времени не пройдена: {reason}")
     elif policy.require_timestamp:
@@ -183,6 +186,8 @@ def _chain_status(details: dict[str, object]) -> str:
 def _revocation_status(details: dict[str, object]) -> str:
     if details.get("revoked"):
         return RevocationStatus.REVOKED
+    if not details.get("revocation_checked"):
+        return RevocationStatus.NOT_CHECKED
     chain_ok = details.get("chain_ok")
     if chain_ok is None:
         return RevocationStatus.NOT_CHECKED
@@ -219,11 +224,13 @@ def complete_signing(
     policy: VerificationPolicy | None = None,
 ) -> CompletionResult:
     """Проверить CMS клиента, встроить её в подготовленный PDF и записать результат."""
-    effective_policy = policy or VerificationPolicy()
+    effective_policy = policy or VerificationPolicy.from_settings()
     try:
         with transaction.atomic():
             session = _load_session(session_id)
             _check_session(session, user)
+            if len(cms) > session.bytes_reserved:
+                raise SigningError("CMS больше зарезервированного места")
             parsed = parse_cms(cms)
             details = _verify(parsed, session, effective_policy)
 
@@ -287,3 +294,5 @@ def complete_signing(
             reason=str(exc),
         )
         raise
+    except IntegrityError as exc:
+        raise SessionError("Подпись уже завершена") from exc

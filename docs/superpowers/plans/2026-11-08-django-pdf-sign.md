@@ -92,6 +92,10 @@ Each task appends its verification result here after the final step.
 | 13 | `uv run pytest -q` | `82 passed` |
 | 13 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 13 | `uv run python -m mypy` | `Success: no issues found in 21 source files` |
+| 14 | `uv run pytest tests/test_cleanup.py -q` | `5 passed` (expire, dry-run, live, retention) |
+| 14 | `uv run pytest -q` | `87 passed` |
+| 14 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 14 | `uv run python -m mypy` | `Success: no issues found in 24 source files` |
 
 ---
 
@@ -1097,7 +1101,7 @@ git commit -m "feat: add CMS and signed PDF verification helpers"
 - Consumes: models, `conf.py`.
 - Produces: `pdf_sign_cleanup` with `--dry-run` and `--retention-days N` (default 7).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_cleanup.py`:
 
@@ -1144,21 +1148,21 @@ def test_dry_run_changes_nothing():
     assert session.status == SigningStatus.PREPARED
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/test_cleanup.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement the command**
+- [x] **Step 3: Implement the command**
 
 Mark expired `prepared` sessions, delete their prepared files, and delete expired sessions older than the retention window. Print a summary. `--dry-run` reports without writing.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `uv run pytest tests/test_cleanup.py -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/django_pdf_sign/management tests/test_cleanup.py

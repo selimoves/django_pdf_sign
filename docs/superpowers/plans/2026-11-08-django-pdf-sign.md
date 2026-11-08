@@ -68,6 +68,12 @@ Each task appends its verification result here after the final step.
 | 8 | `uv run pytest -q` | `36 passed` |
 | 8 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 8 | `uv run python -m mypy` | `Success: no issues found in 14 source files` |
+| 9 | `uv run pytest tests/test_embedder.py -q` | `7 passed` |
+| 9 | `uv run pytest -q` | `43 passed` |
+| 9 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 9 | `uv run python -m mypy` | `Success: no issues found in 15 source files` |
+| 9 | Deviation | An unsigned placeholder cannot be read via `embedded_signatures`; tests enumerate fields with `enumerate_sig_fields` |
+| 9 | Default box | Corrected to `(57, 57, 284, 170)` = 80×40 mm, 20 mm margins |
 
 ---
 
@@ -650,7 +656,7 @@ git commit -m "feat: render configurable Russian signature stamp"
   - `prepare_document(*, pdf: bytes, certificate: CertificateInfo, field_name: str, page: int = -1, box: tuple[int, int, int, int] | None = None, stamp: StampConfig | None = None, reason: str | None = None, location: str | None = None, subfilter: str | None = None, bytes_reserved: int | None = None, timestamp: datetime | None = None) -> PreparedDocument`.
   - `embed_cms(*, prepared_pdf: bytes, reserved_region_start: int, reserved_region_end: int, cms: bytes) -> bytes`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_embedder.py`:
 
@@ -699,25 +705,25 @@ def test_page_minus_one_uses_last_page():
     assert reader.embedded_signatures[0].field_name == "Sig1"
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/test_embedder.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement `prepare_document`**
+- [x] **Step 3: Implement `prepare_document`**
 
 Use `IncrementalPdfFileWriter` + `PdfCMSEmbedder.write_cms`. Resolve `page=-1` to the last page index. Build `SigFieldSpec(field_name, on_page=page, box=box)`; when `box` is `None`, use `conf.DEFAULT_BOX`. Build `SignatureObject(subfilter=..., bytes_reserved=..., reason=..., location=...)`. Build `SigAppearanceSetup` from `pdf/stamp.py`. Send `SigObjSetup`, then `SigIOSetup(md_algorithm="sha256")` (a placeholder hash), then read `output.getvalue()`, recompute the digest with `digest_for(prepared.digest_algorithm, bytes_to_sign)`, and return a `PreparedDocument`. Do **not** send a CMS in this function; the generator is discarded.
 
-- [ ] **Step 4: Implement `embed_cms`**
+- [x] **Step 4: Implement `embed_cms`**
 
 Construct `PreparedByteRangeDigest(document_digest=b"", reserved_region_start=..., reserved_region_end=...)`, wrap `prepared_pdf` in `BytesIO`, call `fill_with_cms(stream, cms)`, return `stream.getvalue()`. Raise `SigningError` if the CMS does not fit the placeholder.
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `uv run pytest tests/test_embedder.py -q`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/django_pdf_sign/pdf/embedder.py tests/test_embedder.py

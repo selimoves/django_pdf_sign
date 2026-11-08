@@ -135,7 +135,7 @@ prepared = prepare_signing(
     user=request.user,
     certificate_der=cert_der,
     page=-1,
-    box=(60, 60, 300, 140),
+    box=(57, 57, 284, 170),
 )
 # prepared.session, prepared.bytes_to_sign, prepared.digest_algorithm,
 # prepared.expires_at
@@ -185,7 +185,7 @@ DJANGO_PDF_SIGN = {
     "BYTES_RESERVED": 16384,
     "MAX_DOCUMENT_BYTES": 25 * 1024 * 1024,
     "DEFAULT_PAGE": -1,
-    "DEFAULT_BOX": (60, 60, 300, 140),
+    "DEFAULT_BOX": (57, 57, 284, 170),
     "SUBFILTER": None,
     "STAMP": {
         "TEXT": DEFAULT_STAMP_TEXT,
@@ -271,7 +271,7 @@ Default template:
 - `%(valid_from)s`, `%(valid_to)s` — `DD.MM.YYYY`.
 - Optional `%(ts)s` — signing time.
 - Font: bundled DejaVu Sans (Cyrillic).
-- Placement: last page (`page=-1`) by default, box `(60, 60, 300, 140)`
+- Placement: last page (`page=-1`) by default, box `(57, 57, 284, 170)`
   (80×40 mm, 20 mm from the bottom-left corner).
 - Background image and custom text via settings.
 

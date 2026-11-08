@@ -22,7 +22,7 @@ DEFAULTS: dict[str, Any] = {
     "BYTES_RESERVED": 16384,
     "MAX_DOCUMENT_BYTES": 25 * 1024 * 1024,
     "DEFAULT_PAGE": -1,
-    "DEFAULT_BOX": (60, 60, 300, 140),
+    "DEFAULT_BOX": (57, 57, 284, 170),
     "SUBFILTER": None,
     "STAMP": STAMP_DEFAULTS,
     "PREPARED_UPLOAD_TO": "django_pdf_sign/prepared/%Y/%m/%d",

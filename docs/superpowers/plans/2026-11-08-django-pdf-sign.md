@@ -79,7 +79,7 @@ Each task appends its verification result here after the final step.
 | 10 | `uv run pytest -q` | `49 passed` |
 | 10 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 10 | `uv run python -m mypy` | `Success: no issues found in 17 source files` |
-| 11 | `uv run pytest tests/test_prepare.py -q` | `9 passed` |
+| 11 | `uv run pytest tests/test_prepare.py -q` | `12 passed` |
 | 11 | `uv run pytest -q` | `58 passed` |
 | 11 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 11 | `uv run python -m mypy` | `Success: no issues found in 19 source files` |
@@ -103,6 +103,7 @@ Each task appends its verification result here after the final step.
 | 15 | `uv build` | sdist + wheel built |
 | 15 | `uv run twine check dist/*` | both `PASSED` |
 | 15 | Clean venv install | `import django_pdf_sign` OK, bundled font and `py.typed` present |
+| 15 | Self-review fix | `SUBFILTER` and `DEFAULT_PAGE` settings are now honored by `prepare_signing`; `97 passed` |
 
 ---
 

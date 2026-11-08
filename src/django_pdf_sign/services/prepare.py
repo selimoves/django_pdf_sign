@@ -41,14 +41,21 @@ def _read_document(document: Model, file_field: str) -> bytes:
         raise SigningError(f"Document has no file in field {file_field!r}")
 
     limit = int(get_setting("MAX_DOCUMENT_BYTES"))
-    if field_file.size > limit:
+    try:
+        size = field_file.size
+    except OSError as exc:
+        raise SigningError(f"Cannot read document file: {exc}") from exc
+    if size > limit:
         raise SigningError(f"Document is larger than the {limit} byte limit")
 
-    field_file.open("rb")
     try:
-        return bytes(field_file.read())
-    finally:
-        field_file.close()
+        field_file.open("rb")
+        try:
+            return bytes(field_file.read())
+        finally:
+            field_file.close()
+    except OSError as exc:
+        raise SigningError(f"Cannot read document file: {exc}") from exc
 
 
 def prepare_signing(
@@ -57,7 +64,7 @@ def prepare_signing(
     certificate_der: bytes,
     user: Any = None,
     file_field: str = "file",
-    page: int = -1,
+    page: int | None = None,
     box: tuple[int, int, int, int] | None = None,
     reason: str | None = None,
     location: str | None = None,
@@ -69,14 +76,17 @@ def prepare_signing(
     certificate = parse_certificate(certificate_der)
     pdf = _read_document(document, file_field)
 
-    resolved_subfilter = subfilter or (
-        SUBFILTER_ADOBE_PKCS7 if certificate.is_gost else SUBFILTER_PADES
+    resolved_page = int(get_setting("DEFAULT_PAGE")) if page is None else page
+    resolved_subfilter = (
+        subfilter
+        or get_setting("SUBFILTER")
+        or (SUBFILTER_ADOBE_PKCS7 if certificate.is_gost else SUBFILTER_PADES)
     )
     prepared = prepare_document(
         pdf=pdf,
         certificate=certificate,
         field_name=field_name or f"Signature{uuid.uuid4().hex[:8]}",
-        page=page,
+        page=resolved_page,
         box=box,
         reason=reason,
         location=location,

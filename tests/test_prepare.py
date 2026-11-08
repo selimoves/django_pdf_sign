@@ -96,3 +96,33 @@ def test_session_stores_box_and_page() -> None:
     assert prepared.session.box == [10, 10, 200, 100]
     assert prepared.session.page == 0
     assert SigningSession.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_prepare_uses_configured_subfilter(settings) -> None:
+    settings.DJANGO_PDF_SIGN = {"SUBFILTER": "/adbe.pkcs7.detached"}
+    info, _ = make_rsa_certificate()
+    prepared = prepare_signing(document=_document(), certificate_der=info.der)
+    assert prepared.session.subfilter == "/adbe.pkcs7.detached"
+
+
+@pytest.mark.django_db
+def test_prepare_uses_configured_default_page(settings) -> None:
+    settings.DJANGO_PDF_SIGN = {"DEFAULT_PAGE": 0}
+    info, _ = make_rsa_certificate()
+    document = Document.objects.create(
+        file=ContentFile(minimal_pdf(pages=2), name="doc.pdf")
+    )
+    prepared = prepare_signing(document=document, certificate_der=info.der)
+    assert prepared.session.page == 0
+
+
+@pytest.mark.django_db
+def test_explicit_page_overrides_setting(settings) -> None:
+    settings.DJANGO_PDF_SIGN = {"DEFAULT_PAGE": 0}
+    info, _ = make_rsa_certificate()
+    document = Document.objects.create(
+        file=ContentFile(minimal_pdf(pages=2), name="doc.pdf")
+    )
+    prepared = prepare_signing(document=document, certificate_der=info.der, page=1)
+    assert prepared.session.page == 1

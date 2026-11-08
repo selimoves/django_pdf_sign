@@ -80,6 +80,40 @@ def prepare_document(
     timestamp: datetime | None = None,
 ) -> PreparedDocument:
     """Добавить штамп и место подписи и вернуть байты для подписи."""
+    try:
+        return _prepare_document(
+            pdf=pdf,
+            certificate=certificate,
+            field_name=field_name,
+            page=page,
+            box=box,
+            stamp=stamp,
+            reason=reason,
+            location=location,
+            subfilter=subfilter,
+            bytes_reserved=bytes_reserved,
+            timestamp=timestamp,
+        )
+    except SigningError:
+        raise
+    except Exception as exc:
+        raise SigningError(f"Не удалось подготовить PDF: {exc}") from exc
+
+
+def _prepare_document(
+    *,
+    pdf: bytes,
+    certificate: CertificateInfo,
+    field_name: str,
+    page: int,
+    box: tuple[int, int, int, int] | None,
+    stamp: StampConfig | None,
+    reason: str | None,
+    location: str | None,
+    subfilter: str | None,
+    bytes_reserved: int | None,
+    timestamp: datetime | None,
+) -> PreparedDocument:
     resolved_page = _resolve_page(pdf, page)
     digest_algorithm = algorithm_for_key_oid(certificate.key_oid)
     subfilter_value = subfilter or (

@@ -21,7 +21,7 @@ jobs:
       - name: Check version matches tag
         run: |
           uv run python -c "import glob,os,zipfile;tag=os.environ['GITHUB_REF_NAME'].lstrip('v');w=glob.glob('dist/*.whl')[0];z=zipfile.ZipFile(w);m=next(n for n in z.namelist() if n.endswith('METADATA'));assert f'Version: {tag}' in z.read(m).decode(), tag"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: dist, path: dist/ }
 
   testpypi:

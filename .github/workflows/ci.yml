@@ -71,3 +71,29 @@ jobs:
       - run: uv sync --all-extras
       - run: uv build
       - run: uv run twine check dist/*
+
+  postgres:
+    name: postgres / py3.13 / django6.1
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - run: uv sync --all-extras
+      - run: uv run pytest tests/test_concurrency.py --ds=tests.settings_postgres -q

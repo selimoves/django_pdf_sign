@@ -25,6 +25,7 @@ VERIFY_DEFAULTS: dict[str, Any] = {
     "OCSPS": (),
     "REVOCATION_MODE": "soft-fail",
     "ALLOW_FETCHING": False,
+    "FETCH_ALLOWED_HOSTS": (),
     "CHECK_TIMESTAMPS": False,
     "REQUIRE_TIMESTAMP": False,
 }

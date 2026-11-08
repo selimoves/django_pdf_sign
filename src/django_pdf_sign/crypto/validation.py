@@ -28,10 +28,12 @@ from django_pdf_sign.crypto.certs import (
     curve_oid_from_parameters,
     gost_public_key_from_spki,
 )
+from django_pdf_sign.crypto.fetchers import AllowlistFetcherBackend
 from django_pdf_sign.crypto.gost import verify_gost
 from django_pdf_sign.crypto.ocsp import evaluate_ocsps
 from django_pdf_sign.crypto.oids import GOST_KEY_OIDS
 from django_pdf_sign.crypto.policy import VerificationPolicy, resolve_moment
+from django_pdf_sign.exceptions import VerificationError
 
 
 @dataclass(frozen=True)
@@ -114,6 +116,11 @@ def validate_chain(certificate_der: bytes, policy: VerificationPolicy) -> ChainR
             validation_time=None,
         )
 
+    if policy.allow_fetching and not policy.fetch_allowed_hosts:
+        raise VerificationError(
+            "ALLOW_FETCHING=True требует непустой FETCH_ALLOWED_HOSTS"
+        )
+
     certificate = x509.Certificate.load(certificate_der)
     intermediates = [x509.Certificate.load(der) for der in policy.intermediate_certs]
     trust_roots = [x509.Certificate.load(der) for der in policy.trust_roots]
@@ -128,6 +135,11 @@ def validate_chain(certificate_der: bytes, policy: VerificationPolicy) -> ChainR
         trust_roots=trust_roots,
         other_certs=intermediates,
         allow_fetching=policy.allow_fetching,
+        fetcher_backend=(
+            AllowlistFetcherBackend(policy.fetch_allowed_hosts)
+            if policy.allow_fetching
+            else None
+        ),
         crls=list(policy.crls),
         revocation_mode=chain_mode,
         moment=moment,

@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
-__version__ = "0.1.0.dev0"
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("django-pdf-sign")
+except PackageNotFoundError:  # исходное дерево без установки
+    from django_pdf_sign._version import __version__
 
 __all__ = ["__version__"]

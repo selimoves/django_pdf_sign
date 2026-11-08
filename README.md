@@ -11,8 +11,6 @@
   квалифицированного сертификата.
 - **PAdES / RSA-ECDSA** — подписи, совместимые с Adobe.
 
-> Статус: ранняя разработка. Публичный API пока не стабилен.
-
 ## Установка
 
 ```bash
@@ -107,11 +105,13 @@ DJANGO_PDF_SIGN = {
         "OCSPS": (),
         "REVOCATION_MODE": "soft-fail",  # none | soft-fail | require
         "ALLOW_FETCHING": False,
+        "FETCH_ALLOWED_HOSTS": (),
         "CHECK_TIMESTAMPS": False,
         "REQUIRE_TIMESTAMP": False,
     },
     "PREPARED_UPLOAD_TO": "django_pdf_sign/prepared/%Y/%m/%d",
     "SIGNED_UPLOAD_TO": "django_pdf_sign/signed/%Y/%m/%d",
+    "ON_EVENT": None,
 }
 ```
 
@@ -120,16 +120,22 @@ DJANGO_PDF_SIGN = {
 
 ## Документация
 
+- [Сайт документации](https://selimoves.github.io/django_pdf_sign/) — быстрый старт, справочник настроек, cookbook.
+- [API](docs/api.md) — стабильный публичный контракт.
 - [Протокол](docs/protocol.md) — контракт сервер/клиент и пример на JS.
 - [Штамп](docs/stamp.md) — шаблон, размещение, настройка.
 - [Юридическая сила](docs/legal.md) — что делает подпись действительной.
+- [Ограничения](docs/limits.md) — производительность и лимиты.
+- [Эксплуатация](docs/operations.md) — хранилище, ретенция, мониторинг.
 - [Фикстуры](docs/fixtures.md) — происхождение тестовых сертификатов.
 - [Интероп с КриптоПро](docker/cryptopro/README.md) — проверка на реальном CSP.
+- [CHANGELOG](CHANGELOG.md), [политика безопасности](SECURITY.md), [поддержка](SUPPORT.md).
+- [Как внести вклад](CONTRIBUTING.md), [дорожная карта](ROADMAP.md).
 
 ## Требования
 
 - Python 3.11+
-- Django 4.2+
+- Django 5.2 LTS, 6.0 или 6.1 (Django 4.2 не поддерживается)
 - `pyhanko[opentype]`, `asn1crypto`, `cryptography`, `gostcrypto`
 
 ## Разработка

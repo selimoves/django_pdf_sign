@@ -100,6 +100,8 @@ testpaths = ["tests"]
 addopts = "-ra --strict-markers --strict-config --cov=django_pdf_sign --cov-branch --cov-report=term-missing --cov-fail-under=82"
 markers = [
   "cryptopro_interop: интероп-проверка с реальным КриптоПро CSP (нужен Docker)",
+  "wheel: проверка собранного колеса (нужен WHEEL_PATH)",
+  "benchmark: замеры производительности (pytest -m benchmark)",
 ]
 filterwarnings = [
   "error",

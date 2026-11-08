@@ -45,6 +45,9 @@ Each task appends its verification result here after the final step.
 | 2 | `uv run pytest tests/test_conf.py -q` | `6 passed` |
 | 2 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 2 | `uv run python -m mypy` | `Success: no issues found in 5 source files` |
+| 3 | `uv run pytest tests/test_digest.py -q` | `9 passed` |
+| 3 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 3 | `uv run python -m mypy` | `Success: no issues found in 8 source files` |
 
 ---
 
@@ -184,7 +187,7 @@ git commit -m "feat: add constants, exceptions and settings access"
   - `digest_for(algorithm: str, data: bytes) -> bytes`.
   - `algorithm_for_key_oid(key_oid: str) -> str` (returns `streebog256`, `streebog512` or `sha256`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_digest.py`:
 
@@ -224,25 +227,25 @@ def test_algorithm_for_rsa():
     assert algorithm_for_key_oid("1.2.840.113549.1.1.1") == "sha256"
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/test_digest.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement the module**
+- [x] **Step 3: Implement the module**
 
 `digest_for` uses `gostcrypto.gosthash.new(name, data=data).digest()` for Streebog and `hashlib.new(name, data).digest()` for SHA-2. `digest_for` raises `ValueError` for unknown names.
 
-- [ ] **Step 4: Replace the Streebog vector with the value the library produces**
+- [x] **Step 4: Replace the Streebog vector with the value the library produces**
 
 Run: `uv run python -c "from gostcrypto import gosthash; print(gosthash.new('streebog256', data=b'abc').hexdigest())"` and put that exact value in the test. The vector must be stable across `gostcrypto` versions; if it changes, the library changed its implementation and the test must be re-examined.
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `uv run pytest tests/test_digest.py -q`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/django_pdf_sign/crypto tests/test_digest.py

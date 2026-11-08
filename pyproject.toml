@@ -154,3 +154,7 @@ exclude = ["migrations/"]
 
 [tool.django-stubs]
 django_settings_module = "tests.settings"
+
+[[tool.mypy.overrides]]
+module = ["gostcrypto.*"]
+ignore_missing_imports = true

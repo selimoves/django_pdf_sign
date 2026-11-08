@@ -115,6 +115,12 @@ Each task appends its verification result here after the final step.
 | 6 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 6 | `uv run python -m mypy` | `Success: no issues found in 28 source files` |
 | 6 | `uv run pytest tests/test_docs.py -q` | `5 passed` (документация синхронизирована с кодом) |
+| 1 | Живой интероп с КриптоПро CSP | Образ собран, `test_cryptopro_interop.py` — `1 passed` на реальном CSP |
+| 1 | Фикстура реальной подписи | `tests/fixtures/cryptopro/` (сертификат, байты, CMS, подписанный PDF) |
+| 1 | `uv run pytest tests/test_cryptopro_fixture.py -q` | `6 passed` (проверка без Docker, цепочка + CRL) |
+| 1 | `uv run pytest -q` | `136 passed, 1 skipped` |
+| 1 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 1 | `uv run python -m mypy` | `Success: no issues found in 28 source files` |
 
 ---
 

@@ -54,6 +54,7 @@ def sign_bytes(bytes_path: str, cms_path: str, thumbprint: str | None) -> None:
     signer.CheckCertificate = True
 
     signed_data = pycades.SignedData()
+    signed_data.ContentEncoding = pycades.CADESCOM_BASE64_TO_BINARY
     signed_data.Content = base64.b64encode(payload).decode("ascii")
     signature = signed_data.SignCades(
         signer, pycades.CADESCOM_CADES_BES, True

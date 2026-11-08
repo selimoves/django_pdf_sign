@@ -27,7 +27,9 @@ RUN git clone --depth 1 https://github.com/CryptoPro/pycades.git /opt/pycades \
 
 RUN certmgr -install -pfx -file /opt/pycades/tests/fixtures/pycades-test.pfx -newpin "" \
     && (echo o | certmgr -install -file /opt/pycades/tests/fixtures/pycades-root.cer -store uRoot) \
-    && certmgr -list -store uMy | grep -q pycades-test
+    && (echo o | certmgr -install -crl -file /opt/pycades/tests/fixtures/pycades-root.crl -store uCA) \
+    && certmgr -list -store uMy | grep -q pycades-test \
+    && certmgr -list -crl -store uCA | grep -q pycades-root
 
 COPY sign.py /opt/sign.py
 ENTRYPOINT ["python", "/opt/sign.py"]

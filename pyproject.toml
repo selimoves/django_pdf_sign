@@ -57,6 +57,7 @@ dev = [
   "django-stubs>=5.0",
   "hypothesis>=6.100",
   "mypy>=1.11",
+  "pytest-benchmark>=5.1",
   "psycopg[binary]>=3.2",
   "pytest>=8.3",
   "pytest-cov>=5.0",
@@ -98,7 +99,7 @@ package = true
 DJANGO_SETTINGS_MODULE = "tests.settings"
 pythonpath = ["src", "."]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers --strict-config --cov=django_pdf_sign --cov-branch --cov-report=term-missing --cov-fail-under=82"
+addopts = "-ra --strict-markers --strict-config -m \"not benchmark\" --cov=django_pdf_sign --cov-branch --cov-report=term-missing --cov-fail-under=82"
 markers = [
   "cryptopro_interop: интероп-проверка с реальным КриптоПро CSP (нужен Docker)",
   "wheel: проверка собранного колеса (нужен WHEEL_PATH)",

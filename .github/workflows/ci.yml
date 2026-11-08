@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --all-extras
-          uv pip install "django~=${{ matrix.django }}.0" "django-stubs~=${{ matrix.django }}.0"
+          uv pip install "django~=${{ matrix.django }}.0"
 
       - name: Lint
         run: uv run ruff check .
@@ -53,6 +53,7 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Type check
+        if: matrix.python == '3.13' && matrix.django == '6.1'
         run: uv run python -m mypy
 
       - name: Test

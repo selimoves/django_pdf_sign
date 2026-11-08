@@ -11,3 +11,6 @@ class DjangoPdfSignConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "django_pdf_sign"
     verbose_name = "PDF signatures"
+
+    def ready(self) -> None:
+        from django_pdf_sign import checks  # noqa: F401

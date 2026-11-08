@@ -88,6 +88,10 @@ Each task appends its verification result here after the final step.
 | 12 | `uv run pytest -q` | `69 passed` |
 | 12 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 12 | `uv run python -m mypy` | `Success: no issues found in 20 source files` |
+| 13 | `uv run pytest tests/test_verify.py tests/test_protocol.py -q` | `13 passed` |
+| 13 | `uv run pytest -q` | `82 passed` |
+| 13 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 13 | `uv run python -m mypy` | `Success: no issues found in 21 source files` |
 
 ---
 
@@ -1024,7 +1028,7 @@ git commit -m "feat: add complete_signing service"
   - `verify_cms_over_bytes(*, cms, data, expected_certificate_der=None) -> VerificationResult`.
   - `verify_signed_pdf(pdf: bytes) -> VerificationResult` (checks the first embedded signature's integrity; cryptographic trust is not evaluated).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_verify.py`:
 
@@ -1058,21 +1062,21 @@ def test_gost_cms_verifies():
 
 `tests/test_protocol.py` pins the documented protocol shape: the session exposes exactly the documented response fields and the digest algorithm names are the documented strings.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/test_verify.py tests/test_protocol.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement `verify.py`**
+- [x] **Step 3: Implement `verify.py`**
 
 Compose `parse_cms`, digest comparison, certificate thumbprint comparison and the signature check. Collect every failure in `errors` instead of raising.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `uv run pytest tests/test_verify.py tests/test_protocol.py -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/django_pdf_sign/services/verify.py tests/test_verify.py tests/test_protocol.py

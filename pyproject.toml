@@ -90,6 +90,9 @@ DJANGO_SETTINGS_MODULE = "tests.settings"
 pythonpath = ["src", "."]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers --strict-config"
+markers = [
+  "cryptopro_interop: интероп-проверка с реальным КриптоПро CSP (нужен Docker)",
+]
 filterwarnings = [
   "error",
   "ignore::DeprecationWarning:pyhanko.*",
@@ -114,7 +117,7 @@ exclude_lines = [
 line-length = 88
 target-version = "py311"
 src = ["src", "tests"]
-extend-exclude = ["docs", "README.md", "src/django_pdf_sign/migrations"]
+extend-exclude = ["docs", "README.md", "src/django_pdf_sign/migrations", "docker"]
 
 [tool.ruff.lint]
 select = [
@@ -149,7 +152,7 @@ mypy_path = ["src", "."]
 strict = true
 warn_unreachable = true
 show_error_codes = true
-exclude = ["migrations/"]
+exclude = ["migrations/", "docker/"]
 
 [tool.django-stubs]
 django_settings_module = "tests.settings"

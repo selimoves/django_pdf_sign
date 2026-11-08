@@ -47,6 +47,12 @@ nav:
   - Безопасность:
       - Модель угроз: threat-model.md
       - Ревью: security-review.md
+  - Cookbook:
+      - Django views: cookbook/views.md
+      - DRF: cookbook/drf.md
+      - Браузер: cookbook/browser.md
+      - Политики проверки: cookbook/policy.md
+  - Пример: https://github.com/selimoves/django_pdf_sign/tree/main/examples
   - Решение проблем: troubleshooting.md
   - FAQ: faq.md
   - Тестовые сертификаты: fixtures.md

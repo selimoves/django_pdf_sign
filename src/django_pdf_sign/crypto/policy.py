@@ -32,6 +32,7 @@ class VerificationPolicy:
     ocsps: tuple[bytes, ...] = ()
     revocation_mode: str = "soft-fail"
     allow_fetching: bool = False
+    fetch_allowed_hosts: tuple[str, ...] = ()
     moment: datetime | None = None
     check_timestamps: bool = False
     require_timestamp: bool = False
@@ -48,6 +49,7 @@ class VerificationPolicy:
             ocsps=_read_many(tuple(config["OCSPS"])),
             revocation_mode=str(config["REVOCATION_MODE"]),
             allow_fetching=bool(config["ALLOW_FETCHING"]),
+            fetch_allowed_hosts=tuple(config["FETCH_ALLOWED_HOSTS"]),
             moment=None,
             check_timestamps=bool(config["CHECK_TIMESTAMPS"]),
             require_timestamp=bool(config["REQUIRE_TIMESTAMP"]),

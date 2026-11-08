@@ -37,3 +37,8 @@ def test_parse_gost_cms() -> None:
 def test_garbage_raises() -> None:
     with pytest.raises(VerificationError):
         parse_cms(b"garbage")
+
+
+def test_parse_cms_rejects_truncated_der() -> None:
+    with pytest.raises(VerificationError):
+        parse_cms(bytes.fromhex("30000000000000000a02"))

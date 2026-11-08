@@ -14,6 +14,14 @@ from tests.helpers import make_gost_certificate, make_gost_ocsp
 NOW = datetime.datetime(2026, 6, 1, tzinfo=datetime.UTC)
 
 
+def test_evaluate_ocsps_ignores_truncated_response() -> None:
+    info, _ = make_gost_certificate()
+    status = evaluate_ocsps(
+        (bytes.fromhex("300100"),), target_der=info.der, issuer_der=info.der
+    )
+    assert status.applicable is False
+
+
 def _chain():
     ca_info, ca_key = make_gost_certificate(common_name="Test CA", is_ca=True)
     leaf_info, _ = make_gost_certificate(

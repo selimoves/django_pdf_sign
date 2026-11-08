@@ -51,3 +51,8 @@ def test_display_name_without_organization() -> None:
 def test_garbage_raises() -> None:
     with pytest.raises(CertificateError):
         parse_certificate(b"not a certificate")
+
+
+def test_parse_certificate_rejects_truncated_der() -> None:
+    with pytest.raises(CertificateError):
+        parse_certificate(bytes.fromhex("3000"))

@@ -176,44 +176,43 @@ def evaluate_ocsps(
     for der in responses:
         try:
             response = ocsp.OCSPResponse.load(der)
-        except Exception as exc:
-            last_errors = (f"Не удалось разобрать OCSP: {exc}",)
-            continue
-        if response["response_status"].native != "successful":
-            last_errors = (f"Статус OCSP: {response['response_status'].native}",)
-            continue
-        try:
+            if response["response_status"].native != "successful":
+                last_errors = (f"Статус OCSP: {response['response_status'].native}",)
+                continue
             response_bytes = response["response_bytes"]
             basic = response_bytes["response"].parsed
             if basic is None:
                 basic = ocsp.BasicOCSPResponse.load(response_bytes["response"].native)
             data = basic["tbs_response_data"]
+            for single in data["responses"]:
+                if _cert_id_matches(single["cert_id"], target, issuer):
+                    produced_at = data["produced_at"].native
+                    if best is None or produced_at > best[0]:
+                        best = (produced_at, single, basic)
         except Exception as exc:
-            last_errors = (f"Не удалось разобрать BasicOCSPResponse: {exc}",)
+            last_errors = (f"Не удалось разобрать OCSP: {exc}",)
             continue
-
-        for single in data["responses"]:
-            if _cert_id_matches(single["cert_id"], target, issuer):
-                produced_at = data["produced_at"].native
-                if best is None or produced_at > best[0]:
-                    best = (produced_at, single, basic)
 
     if best is None:
         return OcspStatus(False, False, False, last_errors)
 
-    produced_at, single, basic = best
-    errors: list[str] = []
-    signature_ok, signature_errors = _verify_ocsp_signature(basic, issuer)
-    errors.extend(signature_errors)
+    try:
+        produced_at, single, basic = best
+        errors: list[str] = []
+        signature_ok, signature_errors = _verify_ocsp_signature(basic, issuer)
+        errors.extend(signature_errors)
 
-    this_update = single["this_update"].native
-    next_update = single["next_update"].native
+        this_update = single["this_update"].native
+        next_update = single["next_update"].native
+        status = single["cert_status"].name
+    except Exception as exc:
+        return OcspStatus(False, False, False, (f"Не удалось разобрать OCSP: {exc}",))
+
     if this_update is not None and this_update - _TIME_TOLERANCE > now:
         errors.append("Ответ OCSP ещё не вступил в силу")
     if next_update is not None and next_update + _TIME_TOLERANCE < now:
         errors.append("Срок действия ответа OCSP истёк")
 
-    status = single["cert_status"].name
     revoked = False
     good = status == "good"
     if status == "revoked":

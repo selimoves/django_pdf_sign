@@ -565,7 +565,7 @@ def make_gost_timestamp(
     gen_time: datetime.datetime | None = None,
     hash_name: str = "streebog256",
 ) -> bytes:
-    """??????? ????? ??????? CAdES-T ??? ????????? ???????."""
+    """Собрать метку времени CAdES-T для указанной подписи."""
     tsa = x509.Certificate.load(tsa_cert_der)
     info = parse_certificate(tsa_cert_der)
     key_size = info.key_size
@@ -653,7 +653,7 @@ def make_gost_timestamp(
 
 
 def add_cms_timestamp(cms_der: bytes, token_der: bytes) -> bytes:
-    """???????? ????? ??????? ? unsigned-???????? ?????????? CMS."""
+    """Добавить метку времени в unsigned-атрибуты подписи CMS."""
     content_info = cms.ContentInfo.load(cms_der)
     signer_info = content_info["content"]["signer_infos"][0]
     token = cms.ContentInfo.load(token_der)

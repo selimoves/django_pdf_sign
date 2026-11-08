@@ -19,8 +19,14 @@ def _error(identifier: str, message: str, hint: str = "") -> Error:
     return Error(message, id=f"django_pdf_sign.{identifier}", hint=hint)
 
 
-def _missing_files(paths: Any) -> list[str]:
-    return [str(path) for path in paths or () if not Path(path).is_file()]
+def _is_path_list(value: Any) -> bool:
+    return isinstance(value, (list, tuple)) and all(
+        isinstance(item, str) for item in value
+    )
+
+
+def _missing_files(paths: list[str] | tuple[str, ...]) -> list[str]:
+    return [str(path) for path in paths if not Path(path).is_file()]
 
 
 @register()
@@ -73,14 +79,27 @@ def check_settings(app_configs: Any = None, **kwargs: Any) -> list[Error]:
             )
         )
 
+    page = config["DEFAULT_PAGE"]
+    if not isinstance(page, int) or isinstance(page, bool):
+        errors.append(_error("E010", "DEFAULT_PAGE должно быть целым"))
+
     for name in ("TRUST_ROOTS", "INTERMEDIATE_CERTS", "CRLS", "OCSPS"):
-        missing = _missing_files(verify[name])
+        value = verify[name]
+        if not _is_path_list(value):
+            errors.append(_error("E006", f"{name} должен быть списком путей"))
+            continue
+        missing = _missing_files(value)
         if missing:
             errors.append(
                 _error("E006", f"{name}: файлы не найдены: {', '.join(missing)}")
             )
 
-    if verify["ALLOW_FETCHING"] and not verify["FETCH_ALLOWED_HOSTS"]:
+    hosts = verify["FETCH_ALLOWED_HOSTS"]
+    if not isinstance(hosts, (list, tuple)) or not all(
+        isinstance(host, str) and host for host in hosts
+    ):
+        errors.append(_error("E007", "FETCH_ALLOWED_HOSTS должен быть списком хостов"))
+    elif verify["ALLOW_FETCHING"] and not hosts:
         errors.append(
             _error(
                 "E007",
@@ -88,7 +107,13 @@ def check_settings(app_configs: Any = None, **kwargs: Any) -> list[Error]:
             )
         )
 
+    for name in ("PREPARED_UPLOAD_TO", "SIGNED_UPLOAD_TO"):
+        if not isinstance(config[name], str):
+            errors.append(_error("E011", f"{name} должно быть строкой"))
+
     stamp = config["STAMP"]
+    if not isinstance(stamp["TEXT"], str):
+        errors.append(_error("E008", "STAMP['TEXT'] должно быть строкой"))
     font_size = stamp["FONT_SIZE"]
     if not isinstance(font_size, int) or isinstance(font_size, bool) or font_size <= 0:
         errors.append(_error("E008", "STAMP['FONT_SIZE'] должно быть положительным"))

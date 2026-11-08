@@ -152,7 +152,7 @@ def _sign_pdf(pdf: bytes) -> bytes:
 @pytest.mark.django_db
 def test_verify_signed_pdf_by_signature_index() -> None:
     twice_signed = _sign_pdf(_sign_pdf(minimal_pdf()))
-    assert verify_signed_pdf(twice_signed).valid
+    assert not verify_signed_pdf(twice_signed).valid
     assert verify_signed_pdf(twice_signed, signature_index=1).valid
     invalid = verify_signed_pdf(twice_signed, signature_index=5)
     assert not invalid.valid

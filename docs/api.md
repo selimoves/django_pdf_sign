@@ -69,6 +69,7 @@
 | `ocsps` | `tuple[bytes, ...]` | `()` |
 | `revocation_mode` | `str` | `"soft-fail"` |
 | `allow_fetching` | `bool` | `False` |
+| `fetch_allowed_hosts` | `tuple[str, ...]` | `()` |
 | `moment` | `datetime \| None` | `None` |
 | `check_timestamps` | `bool` | `False` |
 | `require_timestamp` | `bool` | `False` |

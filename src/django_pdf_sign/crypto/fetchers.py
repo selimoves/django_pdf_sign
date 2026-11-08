@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
+import asyncio
+from typing import Any, cast
 from urllib.parse import urlsplit
 
+import requests
 from pyhanko_certvalidator.errors import (
     CertificateFetchError,
     CRLFetchError,
@@ -33,6 +35,55 @@ class _AllowlistMixin:
         host = (urlsplit(url or "").hostname or "").lower()
         if host not in self._allowed_hosts:
             raise error(f"Хост {host or '<пусто>'!r} не разрешён для загрузки отзыва")
+
+    async def _get(self, url: str, *, acceptable_content_types: tuple[str, ...]) -> Any:
+        owner = cast(Any, self)
+
+        def task() -> Any:
+            headers = {
+                "Accept": ",".join(acceptable_content_types),
+                "User-Agent": owner.user_agent,
+            }
+            response = requests.get(
+                url=url,
+                timeout=owner.per_request_timeout,
+                headers=headers,
+                allow_redirects=False,
+            )
+            if response.status_code != 200:
+                raise requests.RequestException(f"status code {response.status_code}")
+            return response
+
+        return await asyncio.to_thread(task)
+
+    async def _post(
+        self,
+        url: str,
+        data: bytes,
+        *,
+        content_type: str,
+        acceptable_content_types: tuple[str, ...],
+    ) -> Any:
+        owner = cast(Any, self)
+
+        def task() -> Any:
+            headers = {
+                "Accept": ",".join(acceptable_content_types),
+                "User-Agent": owner.user_agent,
+                "Content-Type": content_type,
+            }
+            response = requests.post(
+                url=url,
+                timeout=owner.per_request_timeout,
+                headers=headers,
+                data=data,
+                allow_redirects=False,
+            )
+            if response.status_code != 200:
+                raise requests.RequestException(f"status code {response.status_code}")
+            return response
+
+        return await asyncio.to_thread(task)
 
 
 class _AllowlistCRLFetcher(_AllowlistMixin, RequestsCRLFetcher):

@@ -19,6 +19,7 @@ from django_pdf_sign.crypto.oids import (
     GOST_KEY_OIDS,
     GOST_SIGNATURE_OIDS,
     SHA2_DIGEST_OIDS,
+    SIGNATURE_DIGEST_OIDS,
 )
 from django_pdf_sign.crypto.pades import verify_pades
 
@@ -80,6 +81,9 @@ def _cert_id_matches(
 
 
 def _signature_digest(signature_algorithm: str) -> str | None:
+    mapped = SIGNATURE_DIGEST_OIDS.get(signature_algorithm)
+    if mapped is not None:
+        return mapped
     lowered = signature_algorithm.lower()
     for name in ("sha512", "sha384", "sha256", "sha1"):
         if name in lowered:

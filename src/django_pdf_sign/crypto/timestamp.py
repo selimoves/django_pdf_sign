@@ -15,6 +15,7 @@ from django_pdf_sign.crypto.oids import (
     GOST_DIGEST_OIDS,
     GOST_SIGNATURE_OIDS,
     SHA2_DIGEST_OIDS,
+    SIGNATURE_DIGEST_OIDS,
 )
 from django_pdf_sign.crypto.pades import verify_pades
 
@@ -59,6 +60,9 @@ def _find_attribute(attributes: Any, name: str) -> Any:
 
 
 def _signature_digest(oid: str) -> str | None:
+    mapped = SIGNATURE_DIGEST_OIDS.get(oid)
+    if mapped is not None:
+        return mapped
     for name in ("sha512", "sha384", "sha256", "sha1"):
         if name in oid.lower():
             return name
@@ -144,6 +148,21 @@ def verify_timestamp_token(
         signed_data = token["content"]
         tst_info_der = bytes(signed_data["encap_content_info"]["content"])
         tst_info = tsp.TSTInfo.load(tst_info_der)
+
+        errors: list[str] = []
+        imprint = tst_info["message_imprint"]
+        digest_name = _digest_name(imprint["hash_algorithm"]["algorithm"].dotted)
+        imprint_ok = False
+        if digest_name is None:
+            errors.append("Неподдерживаемый алгоритм imprint метки времени")
+        else:
+            imprint_ok = imprint["hashed_message"].native == _hash(digest_name, covered)
+            if not imprint_ok:
+                errors.append("Imprint метки времени не совпадает с данными")
+
+        signature_ok, signature_errors = _verify_token_signature(signed_data)
+        errors.extend(signature_errors)
+        gen_time = tst_info["gen_time"].native
     except Exception as exc:
         return TimestampResult(
             present=True,
@@ -153,25 +172,11 @@ def verify_timestamp_token(
             errors=(f"Не удалось разобрать метку времени: {exc}",),
         )
 
-    errors: list[str] = []
-    imprint = tst_info["message_imprint"]
-    digest_name = _digest_name(imprint["hash_algorithm"]["algorithm"].dotted)
-    imprint_ok = False
-    if digest_name is None:
-        errors.append("Неподдерживаемый алгоритм imprint метки времени")
-    else:
-        imprint_ok = imprint["hashed_message"].native == _hash(digest_name, covered)
-        if not imprint_ok:
-            errors.append("Imprint метки времени не совпадает с данными")
-
-    signature_ok, signature_errors = _verify_token_signature(signed_data)
-    errors.extend(signature_errors)
-
     return TimestampResult(
         present=True,
         valid=imprint_ok and signature_ok,
         imprint_ok=imprint_ok,
-        gen_time=tst_info["gen_time"].native,
+        gen_time=gen_time,
         errors=tuple(errors),
     )
 

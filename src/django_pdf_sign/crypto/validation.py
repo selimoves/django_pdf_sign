@@ -181,7 +181,7 @@ def validate_chain(certificate_der: bytes, policy: VerificationPolicy) -> ChainR
     errors: list[str] = []
     revoked = False
 
-    if policy.ocsps:
+    if policy.ocsps and policy.revocation_mode != "none":
         issuer_der = certificates[-2] if len(certificates) > 1 else certificates[0]
         ocsp_status = evaluate_ocsps(
             policy.ocsps,
@@ -190,14 +190,11 @@ def validate_chain(certificate_der: bytes, policy: VerificationPolicy) -> ChainR
             moment=moment,
         )
         revoked = ocsp_status.revoked
-        errors.extend(ocsp_status.errors)
-        if (
-            ocsp_only
-            and policy.revocation_mode == "require"
-            and (not ocsp_status.applicable or not ocsp_status.good)
-        ):
-            errors.append("Нет пригодных данных отзыва (OCSP)")
-            revoked = revoked or ocsp_status.revoked
+        if policy.revocation_mode == "require":
+            errors.extend(ocsp_status.errors)
+            if ocsp_only and (not ocsp_status.applicable or not ocsp_status.good):
+                errors.append("Нет пригодных данных отзыва (OCSP)")
+                revoked = revoked or ocsp_status.revoked
 
     valid = not revoked and not errors
     return ChainResult(

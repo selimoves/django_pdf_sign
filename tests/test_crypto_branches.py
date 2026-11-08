@@ -108,6 +108,8 @@ def test_digest_and_hash_sha1() -> None:
     assert timestamp_module._digest_name(timestamp_module.SHA1_OID) == "sha1"
     assert timestamp_module._hash("sha1", b"data") == hashlib.sha1(b"data").digest()
     assert timestamp_module._signature_digest("sha256WithRSAEncryption") == "sha256"
+    assert timestamp_module._signature_digest("1.2.840.113549.1.1.11") == "sha256"
+    assert ocsp_module._signature_digest("1.2.840.10045.4.3.2") == "sha256"
     assert timestamp_module._signature_digest("1.2.3.4") is None
 
 

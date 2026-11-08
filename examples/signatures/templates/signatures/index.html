@@ -1,0 +1,97 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Подпись PDF — django-pdf-sign</title>
+  <script src="https://www.cryptopro.ru/sites/default/files/products/cades/demopage/cadesplugin_api.js"></script>
+</head>
+<body>
+  <h1>Подпись PDF</h1>
+  <p>
+    <input type="file" id="file" accept="application/pdf">
+    <button id="sign">Подписать</button>
+  </p>
+  <p id="status"></p>
+  <script>
+    const status = document.getElementById("status");
+
+    function setStatus(text) {
+      status.textContent = text;
+    }
+
+    async function exportCertificate(certificate) {
+      const base64 = await certificate.Export(cadesplugin.CADESCOM_ENCODE_BASE64);
+      return base64;
+    }
+
+    async function pickCertificate() {
+      await cadesplugin;
+      const store = await cadesplugin.CreateObjectAsync("CAdESCOM.Store");
+      await store.Open(
+        cadesplugin.CAPICOM_CURRENT_USER_STORE,
+        "My",
+        cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED,
+      );
+      const certificates = await store.Certificates;
+      if ((await certificates.Count) === 0) {
+        throw new Error("В личном хранилище нет сертификатов");
+      }
+      return certificates.Item(1);
+    }
+
+    async function sign() {
+      const file = document.getElementById("file").files[0];
+      if (!file) {
+        setStatus("Выберите PDF");
+        return;
+      }
+      setStatus("Загрузка…");
+
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+      const uploaded = await fetch("/upload/", { method: "POST", body: uploadData });
+      const { pk } = await uploaded.json();
+
+      const certificate = await pickCertificate();
+      const certificateDer = await exportCertificate(certificate);
+
+      setStatus("Подготовка…");
+      const prepared = await fetch(`/prepare/${pk}/`, {
+        method: "POST",
+        body: new URLSearchParams({ certificate_der: certificateDer }),
+      });
+      const preparedData = await prepared.json();
+      if (preparedData.error) throw new Error(preparedData.error);
+
+      setStatus("Подпись…");
+      const signer = await cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
+      const cms = await signer.SignCades(
+        certificate,
+        cadesplugin.CADES_BES,
+        preparedData.bytes_to_sign,
+        true,
+        cadesplugin.CADESCOM_BASE64_TO_BINARY,
+      );
+
+      setStatus("Проверка…");
+      const completed = await fetch(`/complete/${preparedData.session_id}/`, {
+        method: "POST",
+        body: new URLSearchParams({ cms }),
+      });
+      if (!completed.ok) throw new Error(await completed.text());
+
+      const blob = await completed.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "signed.pdf";
+      link.click();
+      setStatus("Готово");
+    }
+
+    document.getElementById("sign").addEventListener("click", () => {
+      sign().catch((error) => setStatus(String(error)));
+    });
+  </script>
+</body>
+</html>

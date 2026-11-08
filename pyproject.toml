@@ -134,7 +134,7 @@ exclude_lines = [
 line-length = 88
 target-version = "py311"
 src = ["src", "tests"]
-extend-exclude = ["docs", "README.md", "src/django_pdf_sign/migrations", "docker"]
+extend-exclude = ["docs", "README.md", "src/django_pdf_sign/migrations", "examples/signatures/migrations", "docker"]
 
 [tool.ruff.lint]
 select = [

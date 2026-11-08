@@ -55,3 +55,7 @@ timeout-*
 
 # SBOM
 sbom.json
+
+# ??????
+examples/db.sqlite3
+examples/media/

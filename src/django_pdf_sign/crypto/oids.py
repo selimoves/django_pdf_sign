@@ -17,6 +17,12 @@ GOST_DIGEST_OIDS: dict[str, str] = {
     "1.2.643.7.1.1.2.3": "streebog512",
 }
 
+SHA2_DIGEST_OIDS: dict[str, str] = {
+    "2.16.840.1.101.3.4.2.1": "sha256",
+    "2.16.840.1.101.3.4.2.2": "sha384",
+    "2.16.840.1.101.3.4.2.3": "sha512",
+}
+
 GOST_CURVE_OIDS: dict[str, str] = {
     "1.2.643.7.1.2.1.1.1": "id-tc26-gost-3410-2012-256-paramSetA",
     "1.2.643.7.1.2.1.1.2": "id-tc26-gost-3410-2012-256-paramSetB",

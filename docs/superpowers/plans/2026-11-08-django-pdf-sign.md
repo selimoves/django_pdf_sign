@@ -60,6 +60,10 @@ Each task appends its verification result here after the final step.
 | 6 | `uv run pytest -q` | `30 passed` |
 | 6 | `uv run ruff check .` / `ruff format --check .` | clean |
 | 6 | `uv run python -m mypy` | `Success: no issues found in 11 source files` |
+| 7 | `uv run pytest tests/test_cms.py -q` | `3 passed` (RSA CMS, GOST CMS, garbage) |
+| 7 | `uv run pytest -q` | `33 passed` |
+| 7 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 7 | `uv run python -m mypy` | `Success: no issues found in 12 source files` |
 
 ---
 
@@ -508,7 +512,7 @@ git commit -m "feat: verify RSA and ECDSA PAdES signatures"
   - `parse_cms(cms_bytes: bytes) -> ParsedCms`.
   - `signed_attrs_set_der(attrs) -> bytes` helper that re-tags the implicit `[0]` attributes as a `SET OF` (`0x31`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_cms.py`:
 
@@ -542,21 +546,21 @@ def test_garbage_raises():
         parse_cms(b"garbage")
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `uv run pytest tests/test_cms.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement `parse_cms`**
+- [x] **Step 3: Implement `parse_cms`**
 
 Use `asn1crypto.cms.ContentInfo.load`. Require `content_type == "signed_data"` and exactly one `SignerInfo`. Resolve the signer certificate from `certificates` by `sid`. Read `message_digest` and `content_type` attributes by iterating `signed_attrs`. Convert `signing_time` when present. Map the digest OID through `GOST_DIGEST_OIDS` or `asn1crypto`'s algorithm name.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `uv run pytest tests/test_cms.py -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/django_pdf_sign/crypto/cms.py tests/test_cms.py

@@ -49,12 +49,8 @@ jobs:
       - name: Format check
         run: uv run ruff format --check .
 
-      - name: Type check
-        if: matrix.python == '3.13' && matrix.django == '6.1'
-        run: uv run python -m mypy
-
       - name: Test
-        run: uv run pytest -q
+        run: uv run pytest -q -p randomly -n auto
 
   build:
     name: build distribution
@@ -121,3 +117,23 @@ jobs:
           uv venv .tmp/wheel --python 3.13
           uv pip install --python .tmp/wheel/bin/python "$PWD"/dist/*.whl
           .tmp/wheel/bin/python -c "import django_pdf_sign; print(django_pdf_sign.__version__)"
+
+  mypy:
+    name: mypy / django-stubs${{ matrix.stubs }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stubs: ["5.2", "6.1"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - run: uv sync --all-extras
+      - run: uv pip install "django-stubs~=${{ matrix.stubs }}.0" "django~=${{ matrix.stubs }}.0"
+      - run: uv run python -m mypy
